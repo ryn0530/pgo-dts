@@ -1235,8 +1235,10 @@ async function confirmNewDoc() {
   }
   document.getElementById("newDocTitle").classList.remove("error");
 
+  // Capture pendingQr BEFORE closeSheet wipes it to null
+  var qr = pendingQr;
   closeSheet("newDocSheet");
-  await sendLog("IN", pendingQr, title, uid, notes);
+  await sendLog("IN", qr, title, uid, notes);
 }
 
 function openInSheet(doc) {
