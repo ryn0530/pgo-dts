@@ -998,23 +998,79 @@ async function startCamera() {
     var backCam  = cameras.find(function(c){ return /back|rear|env/i.test(c.label); });
     var deviceId = backCam ? backCam.deviceId : (cameras[0] ? cameras[0].deviceId : null);
 
+    // Request high-resolution stream with continuous autofocus
     var constraints = {
-      video: deviceId
-        ? { deviceId: { exact: deviceId }, facingMode: "environment" }
-        : { facingMode: "environment" },
+      video: {
+        facingMode: { ideal: "environment" },
+        width:  { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 },
+        // Try to enable continuous autofocus on supported devices
+        focusMode:    { ideal: "continuous" },
+        focusDistance:{ ideal: 0.1 }  // close-up focus (~10cm)
+      },
       audio: false
     };
+    if (deviceId) {
+      constraints.video.deviceId = { exact: deviceId };
+    }
 
     if (videoStream) videoStream.getTracks().forEach(function(t){ t.stop(); });
     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    // Apply autofocus AFTER stream is acquired (some browsers need this)
+    var track = videoStream.getVideoTracks()[0];
+    if (track && typeof track.applyConstraints === "function") {
+      try {
+        var capabilities = track.getCapabilities ? track.getCapabilities() : {};
+        var advancedConstraints = [];
+        if (capabilities.focusMode && capabilities.focusMode.indexOf("continuous") !== -1) {
+          advancedConstraints.push({ focusMode: "continuous" });
+        }
+        if (capabilities.zoom) {
+          // Zoom in slightly (1.5x) for better QR detection at normal distance
+          var targetZoom = Math.min(1.5, capabilities.zoom.max || 1);
+          advancedConstraints.push({ zoom: targetZoom });
+        }
+        if (advancedConstraints.length > 0) {
+          await track.applyConstraints({ advanced: advancedConstraints });
+        }
+      } catch(e) { console.warn("Advanced constraints not supported:", e); }
+    }
+
     var video = document.getElementById("camVideo");
     video.srcObject = videoStream;
+
+    // Tap-to-focus handler
+    video.addEventListener("click", handleTapToFocus);
+
     await video.play();
     startScanLoop();
   } catch(err) {
     document.getElementById("camOff").style.display = "flex";
     console.warn("Camera error:", err);
   }
+}
+
+// Tap-to-focus — when user taps the video, try to refocus camera at that point
+async function handleTapToFocus(event) {
+  if (!videoStream) return;
+  var track = videoStream.getVideoTracks()[0];
+  if (!track || !track.applyConstraints) return;
+  try {
+    var capabilities = track.getCapabilities ? track.getCapabilities() : {};
+    if (capabilities.focusMode && capabilities.focusMode.indexOf("single-shot") !== -1) {
+      // Trigger single-shot autofocus (refocus event)
+      await track.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
+      // Switch back to continuous after a moment
+      setTimeout(function() {
+        if (capabilities.focusMode.indexOf("continuous") !== -1) {
+          track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(function(){});
+        }
+      }, 500);
+    }
+    // Visual feedback — flash the frame briefly
+    flashScreen();
+  } catch(e) { /* silent */ }
 }
 
 function stopCamera() {
@@ -1043,18 +1099,34 @@ function startScanLoop() {
 
   function tick() {
     if (!scanLock && video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      var img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var vw = video.videoWidth;
+      var vh = video.videoHeight;
+      canvas.width  = vw;
+      canvas.height = vh;
+      ctx.drawImage(video, 0, 0, vw, vh);
+
+      // Crop to center 70% of frame — matches the scan-box overlay
+      // This is faster AND more accurate (less background noise)
+      var cropSize = Math.floor(Math.min(vw, vh) * 0.7);
+      var cropX = Math.floor((vw - cropSize) / 2);
+      var cropY = Math.floor((vh - cropSize) / 2);
+
+      var img = ctx.getImageData(cropX, cropY, cropSize, cropSize);
 
       // Try BOTH inversion modes — slower but catches more QR codes
       var code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
 
       if (code && code.data) {
-        var qr  = code.data.trim();
+        var qr  = code.data == null ? "" : String(code.data).trim();
         var now = Date.now();
-        if ((qr !== lastQr || now - lastScanTime > COOLDOWN) && qr.length > 0 && qr.length <= 100) {
+        // Strict validation: must be non-empty, valid format, reasonable length
+        if (!qr || qr.length === 0) {
+          // jsQR detected something but data is empty — ignore
+        } else if (qr.length > 100) {
+          // Too long — likely not a document QR
+        } else if (!/^[A-Za-z0-9\-_\/\.]+$/.test(qr)) {
+          // Invalid characters — ignore
+        } else if ((qr !== lastQr || now - lastScanTime > COOLDOWN)) {
           lastQr       = qr;
           lastScanTime = now;
           onQrDetected(qr);
@@ -1068,6 +1140,10 @@ function startScanLoop() {
 
 async function onQrDetected(qr) {
   if (!currentUser || scanLock) return;
+
+  // Strict validation
+  qr = qr == null ? "" : String(qr).trim();
+  if (!qr || qr.length === 0 || qr.length > 100) return;
   if (!/^[A-Za-z0-9\-_\/\.]+$/.test(qr)) return;
 
   scanLock = true;
@@ -1121,11 +1197,11 @@ function setMode(mode) {
   if (mode === "IN") {
     pill.textContent = "▼ Receiving";
     pill.className   = "scan-mode-pill in";
-    hint.textContent = "Point at QR to receive document";
+    hint.textContent = "Hold steady · Tap to refocus";
   } else {
     pill.textContent = "▲ Releasing";
     pill.className   = "scan-mode-pill out";
-    hint.textContent = "Point at QR to release document";
+    hint.textContent = "Hold steady · Tap to refocus";
   }
 }
 
