@@ -186,14 +186,14 @@ html, body {
 }
 .nav-btn {
   flex: 1; display: flex; flex-direction: column;
-  align-items: center; gap: 3px; padding: 10px 4px;
+  align-items: center; gap: 2px; padding: 8px 2px;
   border: none; background: transparent;
   color: rgba(255,255,255,0.4); cursor: pointer;
-  font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600;
-  letter-spacing: 0.3px; transition: color 0.15s;
-  position: relative;
+  font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600;
+  letter-spacing: 0.2px; transition: color 0.15s;
+  position: relative; min-width: 0;
 }
-.nav-btn .nav-icon { font-size: 22px; line-height: 1; }
+.nav-btn .nav-icon { font-size: 20px; line-height: 1; }
 .nav-btn.active { color: var(--gold); }
 .nav-badge {
   position: absolute; top: 6px; right: calc(50% - 16px);
@@ -533,6 +533,72 @@ html, body {
   vertical-align:middle;
 }
 .conn-dot.offline { background:#f87171; }
+
+/* ── Reports / Summary ──────────────────────────── */
+.reports-section {
+  padding: 12px;
+}
+.period-tabs {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 6px; margin-bottom: 14px;
+  background: white; border-radius: 12px; padding: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.period-tab {
+  padding: 9px 4px; border: none; border-radius: 8px;
+  background: transparent; font-family: 'DM Sans', sans-serif;
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  cursor: pointer; letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.period-tab.active { background: var(--navy); color: white; }
+.summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-bottom: 12px;
+}
+.summary-card {
+  background: white; border-radius: 12px;
+  padding: 14px 12px; text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  border-left: 4px solid var(--border);
+}
+.summary-card.in  { border-left-color: var(--green); }
+.summary-card.out { border-left-color: var(--gold); }
+.summary-card.docs { border-left-color: var(--navy-mid); }
+.summary-card.last { border-left-color: var(--teal); }
+.summary-card-num   { font-size: 26px; font-weight: 700; color: var(--navy); line-height: 1; }
+.summary-card-label { font-size: 10px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.summary-card-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+.report-actions {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.report-btn {
+  flex: 1; padding: 11px 8px; border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.report-btn.primary { background: var(--gold); color: var(--navy); }
+.report-btn.primary:active { background: var(--gold-lt); }
+.report-btn.secondary {
+  background: white; color: var(--navy-mid);
+  border: 1.5px solid var(--border);
+}
+.report-summary-box {
+  background: var(--bg); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 10px;
+  font-size: 11px; color: var(--muted);
+  border-left: 3px solid var(--navy-mid);
+}
+.report-summary-box strong { color: var(--navy); font-weight: 700; }
+
+/* Report log preview */
+.report-log-list {
+  margin-top: 12px;
+  max-height: 280px; overflow-y: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.report-log-list .log-card { margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -651,6 +717,32 @@ html, body {
     <div id="trailResult" style="flex:1;padding:0 12px 12px;"></div>
   </div>
 
+  <div class="panel" id="panelReports">
+    <div class="panel-header">
+      <div class="panel-header-title">My Reports</div>
+      <div class="panel-header-sub">Summary of your activity for reporting</div>
+    </div>
+    <div class="reports-section">
+      <div class="period-tabs">
+        <button class="period-tab" id="periodToday" onclick="switchPeriod('today')">Today</button>
+        <button class="period-tab active" id="periodWeek" onclick="switchPeriod('week')">Week</button>
+        <button class="period-tab" id="periodMonth" onclick="switchPeriod('month')">Month</button>
+        <button class="period-tab" id="periodAll" onclick="switchPeriod('all')">All Time</button>
+      </div>
+
+      <div id="reportSummary" style="min-height:200px;">
+        <div style="padding:30px;text-align:center;color:var(--muted);">Loading...</div>
+      </div>
+
+      <div class="report-actions">
+        <button class="report-btn primary" onclick="downloadReport()">📥 Download Report</button>
+        <button class="report-btn secondary" onclick="loadReport()">🔄 Refresh</button>
+      </div>
+
+      <div id="reportEntries" class="report-log-list"></div>
+    </div>
+  </div>
+
   <div class="panel" id="panelAdmin">
     <div class="panel-header" style="padding-bottom:0;">
       <div class="panel-header-title">Admin Dashboard</div>
@@ -719,6 +811,9 @@ html, body {
     </button>
     <button class="nav-btn" id="navLog" onclick="showPanel('Log')">
       <span class="nav-icon">📖</span>My Log
+    </button>
+    <button class="nav-btn" id="navReports" onclick="showPanel('Reports')">
+      <span class="nav-icon">📊</span>Reports
     </button>
     <button class="nav-btn" id="navSearch" onclick="showPanel('Search')">
       <span class="nav-icon">🔍</span>Trail
@@ -1536,8 +1631,175 @@ async function loadAdminContent() {
   }
 }
 
+// ════════════════════════════════════════════════
+// REPORTS / SUMMARY
+// ════════════════════════════════════════════════
+var currentPeriod = "week";
+var reportCache   = null;
+
+function switchPeriod(period) {
+  currentPeriod = period;
+  ["today","week","month","all"].forEach(function(p) {
+    var btn = document.getElementById("period" + p.charAt(0).toUpperCase() + p.slice(1));
+    if (btn) btn.classList.toggle("active", p === period);
+  });
+  loadReport();
+}
+
+async function loadReport() {
+  if (!currentUser) return;
+  var summaryEl = document.getElementById("reportSummary");
+  var entriesEl = document.getElementById("reportEntries");
+  summaryEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);">Loading...</div>';
+  entriesEl.innerHTML = "";
+
+  if (!isOnline) {
+    summaryEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">📶 Offline — connect to internet to load reports</div>';
+    return;
+  }
+
+  try {
+    // Load summary stats
+    var sRes  = await fetch(LOGBOOK_URL + "?action=my_summary&username="
+      + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin()));
+    var sData = await sRes.json();
+
+    // Load detailed entries for the selected period
+    var rRes  = await fetch(LOGBOOK_URL + "?action=my_report&username="
+      + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin())
+      + "&period=" + encodeURIComponent(currentPeriod));
+    var rData = await rRes.json();
+
+    if (sData.error || rData.error) {
+      summaryEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + (sData.error || rData.error) + '</div>';
+      return;
+    }
+
+    reportCache = rData;
+
+    // Decide which counts to show prominently based on period
+    var inCount, outCount, periodLabel;
+    if (currentPeriod === "today") {
+      inCount = sData.todayIn; outCount = sData.todayOut; periodLabel = "Today";
+    } else if (currentPeriod === "week") {
+      inCount = sData.weekIn; outCount = sData.weekOut; periodLabel = "This Week";
+    } else if (currentPeriod === "month") {
+      inCount = sData.monthIn; outCount = sData.monthOut; periodLabel = "This Month";
+    } else {
+      inCount = sData.totalIn; outCount = sData.totalOut; periodLabel = "All Time";
+    }
+
+    var html = '<div class="report-summary-box">'
+      + '<strong>' + escHtml(currentUser.fullName || currentUser.username) + '</strong> · '
+      + periodLabel + (sData.lastActivity ? ' · Last activity: ' + escHtml(sData.lastActivity) : '')
+      + '</div>';
+
+    html += '<div class="summary-grid">'
+      + '<div class="summary-card in"><div class="summary-card-num">' + inCount + '</div>'
+      + '<div class="summary-card-label">📥 Received IN</div></div>'
+      + '<div class="summary-card out"><div class="summary-card-num">' + outCount + '</div>'
+      + '<div class="summary-card-label">📤 Released OUT</div></div>'
+      + '<div class="summary-card docs"><div class="summary-card-num">' + (rData.entries ? rData.entries.length : 0) + '</div>'
+      + '<div class="summary-card-label">Total Entries</div></div>'
+      + '<div class="summary-card last"><div class="summary-card-num">' + sData.uniqueDocs + '</div>'
+      + '<div class="summary-card-label">Unique Docs (Total)</div></div>'
+      + '</div>';
+
+    summaryEl.innerHTML = html;
+
+    // Render entries below
+    if (rData.entries && rData.entries.length > 0) {
+      var listHtml = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Activity Log (' + rData.entries.length + ')</div>';
+      rData.entries.forEach(function(e) {
+        var isIn = e.action === "IN";
+        listHtml += '<div class="log-card ' + (isIn ? "log-in" : "log-out") + '">'
+          + '<div class="log-card-top">'
+          + '<div class="log-card-title">' + escHtml(e.title || "(no title)") + '</div>'
+          + '<span class="log-action-badge ' + (isIn ? "in" : "out") + '">' + e.action + '</span>'
+          + '</div>'
+          + (e.uid ? '<div class="log-uid">UID: ' + escHtml(e.uid) + '</div>' : '')
+          + (e.notes ? '<div class="log-notes">' + escHtml(e.notes) + '</div>' : '')
+          + '<div class="log-meta"><span>' + escHtml(e.timestamp) + '</span></div>'
+          + '</div>';
+      });
+      entriesEl.innerHTML = listHtml;
+    } else {
+      entriesEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">No activity for this period.</div>';
+    }
+
+  } catch(err) {
+    summaryEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">Connection error.</div>';
+  }
+}
+
+/**
+ * Generate CSV from cached report data and trigger download.
+ * Works on Android Chrome — file goes to Downloads folder.
+ */
+function downloadReport() {
+  if (!reportCache || !reportCache.entries || reportCache.entries.length === 0) {
+    alert("No data to download. Try a different period or refresh.");
+    return;
+  }
+
+  var periodNames = {
+    today: "Today",
+    week:  "This_Week",
+    month: "This_Month",
+    all:   "All_Time"
+  };
+  var periodName = periodNames[currentPeriod] || "Report";
+
+  // Build CSV
+  var csv = "PGO Internal Logbook - Activity Report\r\n";
+  csv += "User," + csvEscape(currentUser.fullName || currentUser.username) + "\r\n";
+  csv += "Period," + periodName.replace(/_/g, " ") + "\r\n";
+  csv += "Generated," + new Date().toLocaleString() + "\r\n";
+  csv += "Total Entries," + reportCache.entries.length + "\r\n";
+  csv += "\r\n";
+  csv += "Date/Time,Action,QR Code,Document Title,UID,Notes\r\n";
+
+  reportCache.entries.forEach(function(e) {
+    csv += [
+      csvEscape(e.timestamp),
+      csvEscape(e.action),
+      csvEscape(e.qr),
+      csvEscape(e.title),
+      csvEscape(e.uid),
+      csvEscape(e.notes)
+    ].join(",") + "\r\n";
+  });
+
+  // Trigger download
+  var BOM  = "\uFEFF"; // for proper Excel encoding of UTF-8
+  var blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
+  var url  = URL.createObjectURL(blob);
+  var safeUser = (currentUser.fullName || currentUser.username).replace(/[^a-zA-Z0-9]/g, "_");
+  var datestr  = new Date().toISOString().slice(0,10);
+  var filename = "PGO_Logbook_" + safeUser + "_" + periodName + "_" + datestr + ".csv";
+
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+function csvEscape(value) {
+  if (value == null) return "";
+  var s = String(value);
+  // Wrap in quotes if contains comma, quote, or newline; escape internal quotes
+  if (/[",\r\n]/.test(s)) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+
 function showPanel(name) {
-  var panels = ["Scan","Log","Search","Admin","Settings"];
+  var panels = ["Scan","Log","Reports","Search","Admin","Settings"];
   panels.forEach(function(p) {
     var panel = document.getElementById("panel" + p);
     var nav   = document.getElementById("nav" + p);
@@ -1551,7 +1813,8 @@ function showPanel(name) {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   }
 
-  if (name === "Log") loadMyLog();
+  if (name === "Log")     loadMyLog();
+  if (name === "Reports") loadReport();
   if (name === "Admin" && currentUser && currentUser.role === "admin") loadAdminContent();
   if (name === "Settings") updateConnectionUI();
 }
