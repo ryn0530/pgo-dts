@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDRMS — Document Inquiry Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ════════════════════════════════════════════════
+   VARIABLES & RESET
+════════════════════════════════════════════════ */
+:root {
+  --ink:      #0a1628;
+  --navy:     #0b3d91;
+  --navy-mid: #1a56c4;
+  --gold:     #b8860b;
+  --gold-lt:  #f0c040;
+  --cream:    #faf8f3;
+  --paper:    #f4f1ea;
+  --border:   #d8d0c0;
+  --muted:    #7a6f5e;
+  --green:    #14532d;
+  --green-lt: #dcfce7;
+  --blue:     #1e3a8a;
+  --blue-lt:  #dbeafe;
+  --amber:    #78350f;
+  --amber-lt: #fef3c7;
+  --red:      #7f1d1d;
+  --red-lt:   #fee2e2;
+  --purple:   #4c1d95;
+  --purple-lt:#ede9fe;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ════════════════════════════════════════════════
+   BACKGROUND TEXTURE
+════════════════════════════════════════════════ */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 10%, rgba(11,61,145,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 90% 90%, rgba(184,134,11,0.05) 0%, transparent 60%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230b3d91' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ════════════════════════════════════════════════
+   HEADER
+════════════════════════════════════════════════ */
+.header {
+  position: relative; z-index: 10;
+  background: var(--navy);
+  padding: 0;
+  box-shadow: 0 4px 24px rgba(11,61,145,0.25);
+}
+
+.header-stripe {
+  height: 5px;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--gold-lt) 40%, var(--gold) 100%);
+}
+
+.header-body {
+  display: flex; align-items: center; gap: 20px;
+  padding: 18px 40px;
+}
+
+.header-crest {
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 2px solid rgba(240,192,64,0.4);
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; flex-shrink: 0;
+}
+
+.header-crest img {
+  width: 44px; height: 44px; object-fit: contain;
+}
+
+.header-text { flex: 1; }
+
+.header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 700;
+  color: white; letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.header-sub {
+  font-size: 12px; color: rgba(240,192,64,0.9);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  margin-top: 3px; font-weight: 500;
+}
+
+.header-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
+
+.live-badge {
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 5px 12px; border-radius: 20px;
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74,222,128,0.2);
+  animation: livePulse 2s ease infinite;
+}
+@keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.live-badge span {
+  font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+
+#clockDisplay {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: rgba(255,255,255,0.5);
+  letter-spacing: 1px;
+}
+
+/* ════════════════════════════════════════════════
+   MAIN LAYOUT
+════════════════════════════════════════════════ */
+.main {
+  position: relative; z-index: 1;
+  max-width: 1100px; margin: 0 auto;
+  padding: 48px 32px 80px;
+}
+
+/* ════════════════════════════════════════════════
+   HERO SEARCH
+════════════════════════════════════════════════ */
+.search-hero {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.search-eyebrow {
+  font-size: 11px; font-weight: 600;
+  color: var(--gold); letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+
+.search-heading {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px; font-weight: 800;
+  color: var(--navy); line-height: 1.15;
+  margin-bottom: 10px;
+}
+
+.search-sub {
+  font-size: 16px; color: var(--muted); font-weight: 300;
+  margin-bottom: 36px;
+}
+
+.search-box-wrap {
+  position: relative;
+  max-width: 720px; margin: 0 auto;
+}
+
+.search-input-group {
+  display: flex;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(11,61,145,0.1), 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input-group:focus-within {
+  border-color: var(--navy);
+  box-shadow: 0 8px 40px rgba(11,61,145,0.18), 0 0 0 4px rgba(11,61,145,0.07);
+}
+
+.search-icon-wrap {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 18px 0 22px;
+  color: var(--muted); font-size: 20px; flex-shrink: 0;
+}
+
+#searchInput {
+  flex: 1; border: none; outline: none;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 17px; font-weight: 400;
+  color: var(--ink); background: transparent;
+  padding: 18px 0;
+}
+
+#searchInput::placeholder { color: #b8b0a0; }
+
+.search-btn {
+  background: var(--navy); color: white;
+  border: none; padding: 0 32px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.5px;
+  transition: background 0.15s;
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+.search-btn:hover { background: var(--navy-mid); }
+.search-btn:active { transform: scale(0.98); }
+
+.search-tags {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; margin-top: 14px; flex-wrap: wrap;
+}
+.search-tag-label {
+  font-size: 12px; color: var(--muted); font-weight: 500;
+}
+.search-tag {
+  font-size: 12px; padding: 3px 10px;
+  background: white; border: 1px solid var(--border);
+  border-radius: 20px; color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.search-tag:hover {
+  border-color: var(--navy); color: var(--navy);
+  background: var(--blue-lt);
+}
+
+/* ════════════════════════════════════════════════
+   STATUS AREA
+════════════════════════════════════════════════ */
+#statusMessage {
+  text-align: center; min-height: 28px;
+  font-size: 14px; color: var(--muted);
+  margin-bottom: 24px; transition: all 0.2s;
+}
+#statusMessage.error { color: var(--red); }
+#statusMessage.loading { color: var(--navy); }
+
+/* Loading shimmer */
+.shimmer-card {
+  background: white; border-radius: 16px;
+  padding: 28px; margin-bottom: 16px;
+  overflow: hidden; position: relative;
+}
+.shimmer-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.shimmer-line {
+  height: 14px; border-radius: 7px;
+  background: var(--paper); margin-bottom: 12px;
+}
+.shimmer-line.wide  { width: 65%; }
+.shimmer-line.mid   { width: 45%; }
+.shimmer-line.short { width: 28%; }
+
+/* ════════════════════════════════════════════════
+   RESULTS
+════════════════════════════════════════════════ */
+.results-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.results-count {
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  letter-spacing: 0.5px;
+}
+.results-count strong { color: var(--navy); }
+
+/* Document card */
+.doc-card {
+  background: white;
+  border-radius: 18px;
+  border: 1.5px solid var(--border);
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  animation: cardIn 0.3s ease both;
+}
+.doc-card:hover {
+  border-color: var(--navy);
+  box-shadow: 0 8px 32px rgba(11,61,145,0.12);
+  transform: translateY(-2px);
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 22px 24px 18px;
+}
+
+.card-status-flag {
+  flex-shrink: 0; width: 52px; height: 52px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.flag-in       { background: var(--green-lt); }
+.flag-out      { background: var(--blue-lt); }
+.flag-final    { background: var(--amber-lt); }
+.flag-dispatch { background: var(--purple-lt); }
+.flag-unknown  { background: var(--paper); }
+
+.card-info { flex: 1; min-width: 0; }
+
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--ink); line-height: 1.3;
+  margin-bottom: 5px;
+}
+
+.card-meta-row {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-qr {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 500; color: var(--navy);
+  background: var(--blue-lt); border-radius: 6px;
+  padding: 2px 8px; letter-spacing: 0.5px;
+}
+.card-type {
+  font-size: 12px; color: var(--muted);
+  background: var(--paper); border-radius: 6px;
+  padding: 2px 8px;
+}
+.card-stops {
+  font-size: 12px; color: var(--muted);
+}
+
+.card-right {
+  flex-shrink: 0; text-align: right;
+}
+.card-right button {
+  background: var(--paper); color: var(--navy);
+  border: 1.5px solid var(--border);
+  padding: 7px 16px; border-radius: 8px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.card-right button:hover {
+  background: var(--blue-lt); border-color: var(--navy);
+}
+
+/* Current location banner — the STAR of the UI */
+.location-banner {
+  margin: 0 24px 22px;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 14px;
+  border-left: 5px solid transparent;
+}
+.location-banner.loc-in {
+  background: #f0fdf4; border-left-color: #16a34a;
+}
+.location-banner.loc-out {
+  background: #eff6ff; border-left-color: #2563eb;
+}
+.location-banner.loc-final {
+  background: #fffbeb; border-left-color: #d97706;
+}
+.location-banner.loc-dispatch {
+  background: #faf5ff; border-left-color: #7c3aed;
+}
+.location-banner.loc-unknown {
+  background: var(--paper); border-left-color: var(--border);
+}
+
+.loc-icon { font-size: 26px; flex-shrink: 0; }
+
+.loc-main { flex: 1; }
+
+.loc-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.loc-office {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; font-weight: 700;
+  color: var(--ink); line-height: 1.2;
+}
+
+.loc-time {
+  font-size: 12px; color: var(--muted); margin-top: 3px;
+  display: flex; align-items: center; gap: 5px;
+}
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+.pill-in     { background: #dcfce7; color: #14532d; }
+.pill-out    { background: #dbeafe; color: #1e3a8a; }
+.pill-final  { background: #fef9c3; color: #78350f; }
+.pill-dispatch { background: #ede9fe; color: #4c1d95; }
+.pill-unknown  { background: var(--paper); color: var(--muted); }
+
+/* Trail (expandable) */
+.trail-section {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 20px 24px;
+  background: var(--cream);
+}
+.trail-section.open { display: block; animation: trailIn 0.2s ease; }
+@keyframes trailIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+
+.trail-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.trail-list { position: relative; padding-left: 28px; }
+.trail-list::before {
+  content: ''; position: absolute;
+  left: 8px; top: 8px; bottom: 8px;
+  width: 1px; background: var(--border);
+}
+
+.trail-item {
+  position: relative; margin-bottom: 14px;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.trail-item:last-child { margin-bottom: 0; }
+
+.trail-dot {
+  position: absolute; left: -24px; top: 4px;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid white; flex-shrink: 0;
+}
+.tdot-in     { background: #16a34a; box-shadow: 0 0 0 2px rgba(22,163,74,0.2); }
+.tdot-out    { background: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+.tdot-final  { background: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.2); }
+.tdot-dispatch { background: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.2); }
+
+.trail-body { flex: 1; }
+.trail-action {
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  display: flex; align-items: center; gap: 8px;
+}
+.trail-office { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.trail-time   { font-size: 11px; color: #b0a898; margin-top: 3px;
+  font-family: 'JetBrains Mono', monospace; }
+.trail-dest { font-size: 11px; color: var(--blue); margin-top: 3px; }
+
+/* ════════════════════════════════════════════════
+   EMPTY / WELCOME STATE
+════════════════════════════════════════════════ */
+.welcome-state {
+  text-align: center;
+  padding: 60px 32px;
+  animation: fadeIn 0.5s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.welcome-icon {
+  font-size: 56px; margin-bottom: 20px;
+  filter: grayscale(0.2);
+}
+
+.welcome-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 700;
+  color: var(--navy); margin-bottom: 10px;
+}
+
+.welcome-sub {
+  font-size: 15px; color: var(--muted);
+  max-width: 480px; margin: 0 auto 32px;
+  line-height: 1.6;
+}
+
+.quick-stats {
+  display: inline-grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px; margin-top: 8px;
+}
+.quick-stat {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 20px 24px;
+  text-align: left; min-width: 160px;
+}
+.qs-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px; font-weight: 800; color: var(--navy);
+  line-height: 1;
+}
+.qs-label {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;
+}
+
+/* ════════════════════════════════════════════════
+   NO RESULTS
+════════════════════════════════════════════════ */
+.no-results {
+  text-align: center; padding: 60px 32px;
+  animation: cardIn 0.3s ease;
+}
+.no-results-icon { font-size: 48px; margin-bottom: 16px; }
+.no-results-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; color: var(--ink); margin-bottom: 8px;
+}
+.no-results-sub { font-size: 14px; color: var(--muted); }
+
+/* ════════════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════════════ */
+.footer {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: white;
+  border-top: 1px solid var(--border);
+  padding: 10px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 10; box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+}
+.footer-left {
+  font-size: 12px; color: var(--muted);
+}
+.footer-left strong { color: var(--navy); }
+.footer-right {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--muted);
+}
+.footer-refresh-btn {
+  background: var(--navy); color: white;
+  border: none; padding: 5px 14px;
+  border-radius: 6px; font-size: 12px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-weight: 600; cursor: pointer; transition: background 0.15s;
+}
+.footer-refresh-btn:hover { background: var(--navy-mid); }
+.auto-refresh-label {
+  font-size: 11px; color: var(--muted);
+}
+.refresh-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); display: inline-block;
+  margin-right: 4px; animation: livePulse 2.5s ease infinite;
+}
+
+/* ════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .header-body { padding: 14px 20px; }
+  .header-title { font-size: 16px; }
+  .main { padding: 28px 16px 80px; }
+  .search-heading { font-size: 26px; }
+  .search-btn span { display: none; }
+  .quick-stats { grid-template-columns: 1fr; }
+  .card-header { flex-wrap: wrap; }
+  .card-right { width: 100%; }
+  .card-right button { width: 100%; justify-content: center; }
+  .footer { padding: 10px 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     HEADER
+══════════════════════════════════ -->
+<div class="header">
+  <div class="header-stripe"></div>
+  <div class="header-body">
+    <div class="header-crest">
+      <img src="ifugaologo.png" onerror="this.parentNode.textContent='🏛️'">
+    </div>
+    <div class="header-text">
+      <div class="header-title">Document Inquiry Terminal</div>
+      <div class="header-sub">Province of Ifugao · EDRMS v7.0 · Front Service Desk</div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        <span>Live System</span>
+      </div>
+      <div id="clockDisplay">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MAIN
+══════════════════════════════════ -->
+<div class="main">
+
+  <!-- Search Hero -->
+  <div class="search-hero">
+    <div class="search-eyebrow">Province of Ifugao — Electronic Document Routing System</div>
+    <h1 class="search-heading">Where is your document?</h1>
+    <p class="search-sub">Search by document title, QR tracking number, or reference UID to see its current location.</p>
+
+    <div class="search-box-wrap">
+      <div class="search-input-group">
+        <div class="search-icon-wrap">🔍</div>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Document title, QR code, or reference number..."
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          onkeydown="if(event.key==='Enter') doSearch()"
+        >
+        <button class="search-btn" onclick="doSearch()">
+          <span>Search</span> →
+        </button>
+      </div>
+      <div class="search-tags">
+        <span class="search-tag-label">Try:</span>
+        <span class="search-tag" onclick="fillSearch('budget')">budget</span>
+        <span class="search-tag" onclick="fillSearch('ordinance')">ordinance</span>
+        <span class="search-tag" onclick="fillSearch('memorandum')">memorandum</span>
+        <span class="search-tag" onclick="fillSearch('resolution')">resolution</span>
+        <span class="search-tag" onclick="fillSearch('letter')">letter</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status message -->
+  <div id="statusMessage"></div>
+
+  <!-- Results area -->
+  <div id="resultsArea">
+    <!-- Welcome state (default) -->
+    <div class="welcome-state" id="welcomeState">
+      <div class="welcome-icon">📋</div>
+      <div class="welcome-title">Ready to assist</div>
+      <div class="welcome-sub">
+        Enter a document name or tracking number above to instantly find where it is in the provincial government routing system.
+      </div>
+      <div class="quick-stats" id="quickStats">
+        <div class="quick-stat">
+          <div class="qs-num" id="statDocs">—</div>
+          <div class="qs-label">Documents Tracked</div>
+        </div>
+        <div class="quick-stat">
+          <div class="qs-num" id="statScans">—</div>
+          <div class="qs-label">Total Scans Today</div>
+        </div>
+        <div class="quick-stat">
+          <div class="qs-num" id="statOffices">28</div>
+          <div class="qs-label">Connected Offices</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════
+     FOOTER
+══════════════════════════════════ -->
+<div class="footer">
+  <div class="footer-left">
+    <strong>EDRMS</strong> — Province of Ifugao · Information Systems Division · v7.0
+  </div>
+  <div class="footer-right">
+    <span><span class="refresh-dot"></span> Auto-refresh every 30s</span>
+    <button class="footer-refresh-btn" onclick="refreshLastSearch()">🔄 Refresh</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxfd1fXtD6X4IpLamdZbyJrnb7n4v0__INoWAO44iFZ9-fB1SZAVJvnPnJrXXYumoPH/exec";
+const API_KEY    = "EDRMS2026";
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let lastQuery         = "";
+let autoRefreshTimer  = null;
+let openTrails        = {};   // { qr: bool }
+
+// ═══════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════
+function updateClock() {
+  var n = new Date();
+  var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  document.getElementById("clockDisplay").textContent =
+    days[n.getDay()] + "  " +
+    n.toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" }) + "  " +
+    n.toLocaleTimeString("en-PH", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════
+// QUICK FILL
+// ═══════════════════════════════════════════════
+function fillSearch(term) {
+  document.getElementById("searchInput").value = term;
+  document.getElementById("searchInput").focus();
+}
+
+// ═══════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════
+async function doSearch() {
+  var q = document.getElementById("searchInput").value.trim();
+  if (!q) {
+    setStatus("Please enter a document title or tracking number.", "error");
+    return;
+  }
+  lastQuery = q;
+  showLoading();
+
+  // Auto-refresh: reset timer
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(refreshLastSearch, 30000);
+
+  try {
+    var res  = await fetch(WEBAPP_URL + "?search=" + encodeURIComponent(q) + "&key=" + encodeURIComponent(API_KEY));
+    var data = await res.json();
+
+    if (data.error) {
+      showError("Server error: " + data.error);
+      return;
+    }
+    if (!data.found || !data.results || data.results.length === 0) {
+      showNoResults(q);
+      return;
+    }
+    renderResults(data.results, q);
+  } catch(err) {
+    showError("Cannot connect to the EDRMS server. Please check the internet connection and try again.");
+  }
+}
+
+async function refreshLastSearch() {
+  if (!lastQuery) return;
+  try {
+    var res  = await fetch(WEBAPP_URL + "?search=" + encodeURIComponent(lastQuery) + "&key=" + encodeURIComponent(API_KEY));
+    var data = await res.json();
+    if (data.found && data.results && data.results.length > 0) {
+      renderResults(data.results, lastQuery, true /* silent */);
+    }
+  } catch(e) { /* silent refresh failure */ }
+}
+
+// ═══════════════════════════════════════════════
+// STATUS HELPERS
+// ═══════════════════════════════════════════════
+function setStatus(msg, cls) {
+  var el = document.getElementById("statusMessage");
+  el.textContent = msg;
+  el.className = cls || "";
+}
+
+function showLoading() {
+  setStatus("Searching the system...", "loading");
+  var html = "";
+  for (var i = 0; i < 2; i++) {
+    html += '<div class="shimmer-card">'
+      + '<div class="shimmer-line wide"></div>'
+      + '<div class="shimmer-line mid"></div>'
+      + '<div class="shimmer-line short"></div>'
+      + '</div>';
+  }
+  document.getElementById("resultsArea").innerHTML = html;
+}
+
+function showError(msg) {
+  setStatus(msg, "error");
+  document.getElementById("resultsArea").innerHTML =
+    '<div class="no-results">'
+    + '<div class="no-results-icon">⚠️</div>'
+    + '<div class="no-results-title">Could not retrieve results</div>'
+    + '<div class="no-results-sub">' + escHtml(msg) + '</div>'
+    + '</div>';
+}
+
+function showNoResults(q) {
+  setStatus("");
+  document.getElementById("resultsArea").innerHTML =
+    '<div class="no-results">'
+    + '<div class="no-results-icon">🔎</div>'
+    + '<div class="no-results-title">No documents found for "' + escHtml(q) + '"</div>'
+    + '<div class="no-results-sub">Try a different title, QR code, or reference number. The document may not have been scanned into the system yet.</div>'
+    + '</div>';
+}
+
+// ═══════════════════════════════════════════════
+// RENDER RESULTS
+// ═══════════════════════════════════════════════
+function renderResults(results, query, silent) {
+  if (!silent) {
+    setStatus("");
+  }
+
+  // Determine current location from the trail
+  results.forEach(function(doc) {
+    doc._current = deriveCurrentStatus(doc);
+  });
+
+  var html = '<div class="results-header">'
+    + '<div class="results-count">Found <strong>' + results.length + '</strong> document' + (results.length !== 1 ? 's' : '') + ' matching "' + escHtml(query) + '"</div>'
+    + '</div>';
+
+  results.forEach(function(doc, idx) {
+    html += renderDocCard(doc, idx);
+  });
+
+  document.getElementById("resultsArea").innerHTML = html;
+}
+
+function deriveCurrentStatus(doc) {
+  if (!doc.trail || doc.trail.length === 0) {
+    return { office: "Not yet processed", action: "UNKNOWN", time: "", icon: "📄", pillClass: "pill-unknown", flagClass: "flag-unknown", bannerClass: "loc-unknown" };
+  }
+
+  var last = doc.trail[doc.trail.length - 1];
+  var action = last.action || "";
+
+  if (action.indexOf("Final") !== -1 || action === "IN(Final)" || action === "IN(Final,Offline)") {
+    return {
+      office:      last.office,
+      action:      "FINALIZED",
+      time:        last.timestamp,
+      icon:        "🟡",
+      pillClass:   "pill-final",
+      flagClass:   "flag-final",
+      bannerClass: "loc-final",
+      label:       "Document Finalized At"
+    };
+  }
+  if (action === "IN" || action === "IN(Offline)") {
+    return {
+      office:      last.office,
+      action:      "IN OFFICE",
+      time:        last.timestamp,
+      icon:        "🟢",
+      pillClass:   "pill-in",
+      flagClass:   "flag-in",
+      bannerClass: "loc-in",
+      label:       "Currently Located At"
+    };
+  }
+  if (action === "OUT" || action === "OUT(Offline)" || action.indexOf("TRANSFER") !== -1) {
+    return {
+      office:      last.office + " → " + (last.destinations || "Next Office"),
+      action:      "IN TRANSIT",
+      time:        last.timestamp,
+      icon:        "🔵",
+      pillClass:   "pill-out",
+      flagClass:   "flag-out",
+      bannerClass: "loc-out",
+      label:       "Last Released From"
+    };
+  }
+  if (action === "DISPATCH") {
+    return {
+      office:      last.destinations || "External Recipient",
+      action:      "DISPATCHED",
+      time:        last.timestamp,
+      icon:        "📮",
+      pillClass:   "pill-dispatch",
+      flagClass:   "flag-dispatch",
+      bannerClass: "loc-dispatch",
+      label:       "Dispatched To"
+    };
+  }
+
+  return {
+    office:      last.office,
+    action:      action,
+    time:        last.timestamp,
+    icon:        "📋",
+    pillClass:   "pill-unknown",
+    flagClass:   "flag-unknown",
+    bannerClass: "loc-unknown",
+    label:       "Last Known Location"
+  };
+}
+
+function renderDocCard(doc, idx) {
+  var cur = doc._current;
+  var qr  = doc.qr || "";
+
+  var html = '<div class="doc-card" style="animation-delay:' + (idx * 80) + 'ms">';
+
+  // Card header
+  html += '<div class="card-header">'
+    + '<div class="card-status-flag ' + cur.flagClass + '">' + cur.icon + '</div>'
+    + '<div class="card-info">'
+    + '<div class="card-title">' + escHtml(doc.title || "(No Title)") + '</div>'
+    + '<div class="card-meta-row">'
+    + '<span class="card-qr">QR: ' + escHtml(qr) + '</span>'
+    + (doc.docType ? '<span class="card-type">' + escHtml(doc.docType) + '</span>' : '')
+    + '<span class="card-stops">' + (doc.totalStops || 0) + ' scan' + (doc.totalStops !== 1 ? 's' : '') + ' recorded</span>'
+    + '</div>'
+    + '</div>'
+    + '<div class="card-right">'
+    + '<button onclick="toggleTrail(\'' + escAttr(qr) + '\')" id="trailbtn-' + escAttr(qr) + '">'
+    + '<span id="trailbtntext-' + escAttr(qr) + '">📜 View Full Trail</span>'
+    + '</button>'
+    + '</div>'
+    + '</div>';
+
+  // Location banner — the most important part
+  html += '<div class="location-banner ' + cur.bannerClass + '">'
+    + '<div class="loc-icon">' + (cur.icon === "🟢" ? "📍" : cur.icon === "🔵" ? "🚀" : cur.icon === "🟡" ? "✅" : cur.icon === "📮" ? "📬" : "📍") + '</div>'
+    + '<div class="loc-main">'
+    + '<div class="loc-label">' + (cur.label || "Current Status") + '</div>'
+    + '<div class="loc-office">' + escHtml(cur.office) + '</div>'
+    + (cur.time ? '<div class="loc-time">🕐 ' + escHtml(cur.time) + '</div>' : '')
+    + '</div>'
+    + '<div class="status-pill ' + cur.pillClass + '">' + cur.action + '</div>'
+    + '</div>';
+
+  // Trail (hidden by default)
+  html += '<div class="trail-section" id="trail-' + escAttr(qr) + '">';
+  html += '<div class="trail-title">Complete Document Trail (' + (doc.totalStops || 0) + ' events)</div>';
+  html += '<div class="trail-list">';
+
+  if (doc.trail && doc.trail.length > 0) {
+    doc.trail.forEach(function(stop) {
+      var a = stop.action || "";
+      var isIn  = a === "IN" || a.indexOf("IN") !== -1;
+      var isOut = a === "OUT" || a.indexOf("OUT") !== -1 || a.indexOf("TRANSFER") !== -1;
+      var isFin = a.indexOf("Final") !== -1;
+      var isDis = a === "DISPATCH";
+      var dotClass = isFin ? "tdot-final" : isDis ? "tdot-dispatch" : isIn ? "tdot-in" : isOut ? "tdot-out" : "tdot-in";
+      var actionLabel = isFin ? "✅ Finalized" : isDis ? "📮 Dispatched" : isIn ? "📥 Received IN" : isOut ? "📤 Released OUT" : a;
+      var isOffline = a.indexOf("Offline") !== -1;
+
+      html += '<div class="trail-item">'
+        + '<div class="trail-dot ' + dotClass + '"></div>'
+        + '<div class="trail-body">'
+        + '<div class="trail-action">' + escHtml(actionLabel) + (isOffline ? ' <span style="font-size:10px;background:#ffedd5;color:#9a3412;padding:1px 6px;border-radius:4px;font-weight:600;">offline</span>' : '') + '</div>'
+        + '<div class="trail-office">📍 ' + escHtml(stop.office || "—") + '</div>'
+        + (stop.destinations ? '<div class="trail-dest">→ ' + escHtml(stop.destinations) + '</div>' : '')
+        + '<div class="trail-time">' + escHtml(stop.timestamp || "") + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+  } else {
+    html += '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No trail entries found.</div>';
+  }
+
+  html += '</div></div></div>';
+
+  return html;
+}
+
+function toggleTrail(qr) {
+  var trail = document.getElementById("trail-" + qr);
+  var btn   = document.getElementById("trailbtntext-" + qr);
+  if (!trail) return;
+  var isOpen = trail.classList.toggle("open");
+  btn.textContent = isOpen ? "▲ Hide Trail" : "📜 View Full Trail";
+  openTrails[qr] = isOpen;
+}
+
+// ═══════════════════════════════════════════════
+// QUICK STATS (load on page open)
+// ═══════════════════════════════════════════════
+async function loadQuickStats() {
+  try {
+    var res  = await fetch(WEBAPP_URL + "?dashboard=1&key=" + encodeURIComponent(API_KEY));
+    var data = await res.json();
+    if (data && data.length !== undefined) {
+      document.getElementById("statScans").textContent = data.length;
+    }
+    // Estimate unique docs
+    var qrs = {};
+    if (Array.isArray(data)) {
+      data.forEach(function(e) { if (e.number) qrs[e.number] = true; });
+      document.getElementById("statDocs").textContent = Object.keys(qrs).length;
+    }
+  } catch(e) { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function escHtml(str) {
+  return String(str || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+function escAttr(str) {
+  return String(str || "").replace(/[^A-Za-z0-9\-_]/g, "_");
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+loadQuickStats();
+document.getElementById("searchInput").focus();
+</script>
+</body>
+</html>
