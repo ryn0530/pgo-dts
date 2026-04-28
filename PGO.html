@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-Government DTS v7.0 - Offline Ready</title>
+<style>
+/* --- General --- */
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+                url('rice.png') no-repeat center center / cover;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* --- Header --- */
+.header {
+    position: fixed; top: 0; width: 100%;
+    background: #0b3d91; color: white;
+    padding: 15px 20px; text-align: center; z-index: 10;
+}
+.header-center-content {
+    display: inline-flex; align-items: center; justify-content: center; gap: 15px;
+}
+.header-title { text-align: center; color: white; line-height: 1.2; }
+.header-title .line1, .header-title .line2, .header-title .line3 {
+    font-size: 14px; font-family: "Merriweather", "Times New Roman", serif; letter-spacing: 1px;
+}
+.header-title .line4 {
+    font-size: 16px; font-family: "Merriweather", "Times New Roman", serif;
+    font-weight: 700; letter-spacing: 2px;
+}
+.logo { width: 80px; height: 80px; object-fit: contain; }
+.header-clock {
+    position: absolute; top: 50%; right: 80px;
+    transform: translateY(-50%); font-size: 13px; text-align: right;
+}
+
+/* --- Banners --- */
+.connection-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    text-align: center; padding: 8px; font-weight: 700; font-size: 14px;
+    letter-spacing: 1px; transition: all 0.3s ease; transform: translateY(-100%);
+}
+.connection-banner.visible { transform: translateY(0); }
+.connection-banner.offline { background: linear-gradient(90deg, #dc2626, #b91c1c); color: white; }
+.connection-banner.syncing { background: linear-gradient(90deg, #f59e0b, #d97706); color: white; }
+.connection-banner.online  { background: linear-gradient(90deg, #16a34a, #15803d); color: white; }
+
+.queue-badge {
+    position: fixed; top: 135px; right: 20px; z-index: 200;
+    background: #dc2626; color: white; padding: 8px 16px;
+    border-radius: 20px; font-weight: 700; font-size: 13px;
+    box-shadow: 0 4px 12px rgba(220,38,38,0.4); display: none;
+    animation: pulseQueue 1.5s ease infinite;
+}
+@keyframes pulseQueue { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+
+/* --- Main Layout --- */
+.main {
+    display: flex; flex: 1; margin-top: 130px; margin-bottom: 80px;
+    padding: 20px; gap: 20px; height: calc(100vh - 210px);
+}
+.scanner-panel, .sidebar, .live-tracking {
+    display: flex; flex-direction: column;
+    background: white; border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 20px; flex: 1;
+}
+.live-tracking { flex: 0.8; }
+#dashboard { flex: 1; overflow-y: auto; border: 1px solid #ccc; padding: 8px; }
+.sidebar { overflow-y: auto; }
+
+/* --- Scanner --- */
+.scanner-panel h2 { font-size: 26px; color: #0b3d91; margin: 0 0 5px; }
+.scanner-panel > p { margin: 0 0 10px; font-size: 13px; color: #666; }
+
+/* --- Four-Button Grid --- */
+.scan-buttons-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
+}
+.scan-card {
+    position: relative; border-radius: 10px; padding: 12px 10px 10px;
+    text-align: center; cursor: pointer; transition: all 0.2s ease;
+    border: 2.5px solid transparent;
+}
+.scan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+.scan-card.active { box-shadow: 0 0 0 3px rgba(0,0,0,0.08); }
+
+.scan-card.card-in    { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+.scan-card.card-in.active    { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
+.scan-card.card-out   { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.scan-card.card-out.active   { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.18); }
+.scan-card.card-final { background: #fffbeb; color: #854d0e; border-color: #fde68a; }
+.scan-card.card-final.active { border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,0.18); }
+.scan-card.card-dispatch { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
+.scan-card.card-dispatch.active { border-color: #9333ea; box-shadow: 0 0 0 3px rgba(147,51,234,0.18); }
+
+.scan-card-icon { font-size: 24px; line-height: 1; margin-bottom: 4px; }
+.scan-card-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1px; }
+.scan-card-desc { font-size: 10px; opacity: 0.7; line-height: 1.3; }
+
+.scan-card-input-wrap { display: none; margin-top: 8px; }
+.scan-card.active .scan-card-input-wrap { display: block; }
+.scan-card-input-wrap input {
+    width: 88%; padding: 10px 8px; font-size: 15px; font-weight: bold;
+    border: 2px solid currentColor; border-radius: 7px; text-align: center;
+    outline: none; background: white; color: #222;
+}
+.scan-card-input-wrap .scan-hint {
+    font-size: 10px; margin-top: 4px; opacity: 0.6;
+    animation: hintPulse 1.2s ease infinite alternate;
+}
+@keyframes hintPulse { 0%{opacity:0.4} 100%{opacity:0.9} }
+
+/* Send-to-Many toggle */
+.send-many-toggle { display: none; margin-top: 6px; }
+.scan-card.card-out.active .send-many-toggle { display: block; }
+.send-many-toggle label {
+    font-size: 10px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 20px; background: #dbeafe; color: #1e40af;
+    user-select: none;
+}
+
+.status { margin-top: 8px; font-size: 14px; font-weight: bold; min-height: 20px; }
+
+/* --- Dashboard rows --- */
+.doc-row {
+    padding: 10px; border-bottom: 1px solid #eee; font-size: 14px;
+    border-left: 4px solid #0b3d91; background: #fafafa; margin-bottom: 4px;
+}
+.doc-row.queued   { border-left-color: #f59e0b; background: #fffbeb; }
+.doc-row.synced   { border-left-color: #16a34a; }
+.doc-row.conflict { border-left-color: #b91c1c; background: #fff1f2; }
+.doc-row.offline-synced { border-left-color: #d97706; background: #fffbeb; }
+.dest-badges { margin-top: 3px; }
+.dest-badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 1px 7px; border-radius: 10px; background: #dbeafe;
+    color: #1e40af; margin-right: 3px; margin-top: 2px;
+}
+
+/* --- Sidebar --- */
+.sidebar h3 { color: #0b3d91; margin-top: 14px; }
+.badge {
+    background: #0b3d91; color: white; padding: 8px 15px;
+    border-radius: 20px; font-size: 22px; font-weight: 700; margin-bottom: 10px;
+}
+.connection-status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+
+/* --- Search / Track boxes --- */
+.search-box { display: flex; gap: 8px; margin-bottom: 10px; }
+.search-box input {
+    flex: 1; padding: 8px 10px; font-size: 12px;
+    border: 1.5px solid #c0c0c0; border-radius: 7px;
+}
+.search-box input:focus { border-color: #0b3d91; outline: none; }
+.search-box button {
+    background: #0b3d91; color: white; border: none;
+    padding: 8px 14px; border-radius: 7px; font-size: 12px;
+    font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+
+/* --- Dispatch Tracker --- */
+.dispatch-log { margin-top: 8px; }
+.dispatch-log-item {
+    padding: 8px 10px; border: 1px solid #e9d5ff; border-radius: 8px;
+    margin-bottom: 6px; cursor: pointer; transition: background 0.15s;
+    border-left: 3px solid #9333ea; font-size: 12px;
+}
+.dispatch-log-item:hover { background: #faf5ff; }
+.dispatch-log-item .dl-title { font-weight: 700; color: #6b21a8; }
+.dispatch-log-item .dl-meta { color: #888; font-size: 11px; margin-top: 2px; }
+.dispatch-progress {
+    height: 5px; border-radius: 3px; background: #f3e8ff; margin-top: 4px; overflow: hidden;
+}
+.dispatch-progress-fill { height: 100%; border-radius: 3px; background: #9333ea; transition: width 0.3s; }
+
+/* --- Track Modal (shared) --- */
+.track-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 3000;
+    align-items: center; justify-content: center;
+}
+.track-modal-overlay.visible { display: flex; }
+.track-modal {
+    background: white; border-radius: 14px;
+    width: 660px; max-width: 96vw; max-height: 88vh;
+    overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+.track-modal-header {
+    background: #0b3d91; color: white; padding: 20px 24px;
+    border-radius: 14px 14px 0 0; position: sticky; top: 0; z-index: 1;
+}
+.track-modal-header h3 { margin: 0 0 4px; font-size: 17px; }
+.track-modal-header p  { margin: 0; font-size: 12px; opacity: 0.8; }
+.track-modal-body { padding: 20px 24px; }
+.track-close {
+    float: right; background: rgba(255,255,255,0.2); border: none;
+    color: white; width: 28px; height: 28px; border-radius: 50%;
+    font-size: 16px; cursor: pointer; line-height: 28px; text-align: center;
+}
+.track-close:hover { background: rgba(255,255,255,0.35); }
+
+.status-pill {
+    display: inline-block; padding: 3px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; margin-bottom: 16px;
+}
+.status-pill.in-office { background: #dcfce7; color: #166534; }
+.status-pill.transit   { background: #dbeafe; color: #1e40af; }
+.status-pill.finalized { background: #fef9c3; color: #854d0e; }
+.status-pill.dispatched { background: #f3e8ff; color: #6b21a8; }
+
+.doc-meta {
+    background: #f8fafc; border-radius: 8px; padding: 12px 16px;
+    margin-bottom: 18px; font-size: 13px; display: grid;
+    grid-template-columns: 1fr 1fr; gap: 6px 16px;
+}
+.doc-meta span { color: #888; font-size: 11px; display: block; }
+.doc-meta strong { color: #1a1a1a; }
+
+/* Timeline */
+.timeline { position: relative; padding-left: 32px; }
+.timeline::before {
+    content: ''; position: absolute; left: 12px; top: 8px;
+    bottom: 8px; width: 2px; background: #e5e7eb;
+}
+.tl-item { position: relative; margin-bottom: 16px; }
+.tl-dot {
+    position: absolute; left: -26px; top: 6px;
+    width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;
+}
+.tl-card {
+    background: #f9fafb; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: 10px 14px; border-left: 3px solid #e5e7eb;
+}
+.tl-card.action-in       { border-left-color: #16a34a; background: #f0fdf4; }
+.tl-card.action-out      { border-left-color: #2563eb; background: #eff6ff; }
+.tl-card.action-autoout  { border-left-color: #9ca3af; background: #f9fafb; }
+.tl-card.action-final    { border-left-color: #d97706; background: #fffbeb; }
+.tl-card.action-dispatch { border-left-color: #9333ea; background: #faf5ff; }
+.tl-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.tl-action { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+.tl-office { font-size: 12px; color: #555; margin-top: 2px; }
+.tl-time   { font-size: 11px; color: #888; text-align: right; white-space: nowrap; }
+.tl-duration { font-size: 11px; color: #888; margin-top: 4px; }
+.tl-delay { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-top: 4px; }
+.tl-delay.delayed { background: #fee2e2; color: #991b1b; }
+.tl-delay.ontime  { background: #dcfce7; color: #166534; }
+.tl-destinations { margin-top: 5px; font-size: 11px; color: #1e40af; }
+
+.search-results { margin-bottom: 14px; }
+.search-result-item {
+    padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
+    border-left: 3px solid #0b3d91;
+}
+.search-result-item:hover { background: #f0f4ff; }
+.search-result-item .res-title { font-size: 13px; font-weight: 700; color: #0b3d91; }
+.search-result-item .res-meta  { font-size: 11px; color: #888; margin-top: 3px; }
+
+/* --- Queue --- */
+.queue-section {
+    margin-top: 10px; padding: 10px; background: #fffbeb;
+    border: 1px dashed #f59e0b; border-radius: 8px; display: none;
+}
+.queue-section h4 { color: #d97706; margin-bottom: 8px; font-size: 14px; }
+.queue-item {
+    padding: 6px 10px; background: white; border-radius: 6px;
+    margin-bottom: 4px; font-size: 13px; border-left: 3px solid #f59e0b;
+}
+
+/* --- Modal shared --- */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 2000;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+.modal-box {
+    background: white; border-radius: 12px; padding: 28px 32px;
+    width: 420px; max-width: 92vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-box h3 { margin: 0 0 6px; color: #0b3d91; font-size: 18px; }
+.modal-box p { margin: 0 0 14px; font-size: 13px; color: #555; }
+.modal-box label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px; }
+.modal-box input[type="text"], .modal-box select {
+    width: 100%; padding: 10px 12px; font-size: 14px;
+    border: 1.5px solid #c0c0c0; border-radius: 7px;
+    margin-bottom: 14px; box-sizing: border-box;
+}
+.modal-box input:focus, .modal-box select:focus { border-color: #0b3d91; outline: none; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+.btn-primary {
+    background: #0b3d91; color: white; border: none;
+    padding: 10px 22px; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.btn-primary:hover { background: #0a3580; }
+.btn-secondary {
+    background: white; color: #555; border: 1.5px solid #ccc;
+    padding: 10px 22px; border-radius: 7px; font-size: 14px; cursor: pointer;
+}
+.qr-badge {
+    display: inline-block; background: #e8f0fe; color: #0b3d91;
+    font-weight: 700; font-size: 15px; padding: 4px 12px; border-radius: 6px;
+    margin-bottom: 14px;
+}
+
+/* --- Recipient / Destination selector modal --- */
+.dest-modal-box {
+    background: white; border-radius: 12px; padding: 24px 28px;
+    width: 520px; max-width: 94vw; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.dest-modal-box h3 { margin: 0 0 4px; font-size: 17px; }
+.dest-modal-box > p { margin: 0 0 14px; font-size: 12px; color: #666; }
+.dest-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 14px; max-height: 260px; overflow-y: auto;
+}
+.dest-option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+    cursor: pointer; transition: all 0.15s; font-size: 13px; user-select: none;
+}
+.dest-option:hover { border-color: #93c5fd; background: #f0f7ff; }
+.dest-option.checked { border-color: #2563eb; background: #eff6ff; font-weight: 700; }
+.dest-option input[type="checkbox"] { accent-color: #2563eb; width: 16px; height: 16px; }
+.dest-select-all { font-size: 12px; color: #2563eb; cursor: pointer; font-weight: 600; margin-bottom: 8px; display: inline-block; }
+.dest-count { font-size: 12px; color: #888; margin-bottom: 10px; }
+
+/* --- Recipient Category Picker --- */
+.cat-grid {
+    display: grid; grid-template-columns: 1fr; gap: 12px;
+    margin-bottom: 8px;
+}
+.cat-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px; border: 2px solid #e5e7eb; border-radius: 12px;
+    cursor: pointer; transition: all 0.18s ease; user-select: none;
+    background: #fafafa;
+}
+.cat-card:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+.cat-card.cat-muni { border-color: #bfdbfe; }
+.cat-card.cat-muni:hover { border-color: #2563eb; background: #eff6ff; }
+.cat-card.cat-nat  { border-color: #fde68a; }
+.cat-card.cat-nat:hover  { border-color: #d97706; background: #fffbeb; }
+.cat-card.cat-oth  { border-color: #d1d5db; }
+.cat-card.cat-oth:hover  { border-color: #6b7280; background: #f3f4f6; }
+.cat-icon { font-size: 30px; flex-shrink: 0; }
+.cat-text { flex: 1; }
+.cat-title { font-size: 15px; font-weight: 700; color: #1f2937; }
+.cat-desc  { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
+.cat-arrow { font-size: 18px; color: #9ca3af; }
+
+/* Other-text field for both type and recipient */
+.other-text-row {
+    display: none; margin-top: 6px; margin-bottom: 14px;
+}
+.other-text-row.visible { display: block; }
+.other-text-row input {
+    width: 100%; padding: 9px 12px; font-size: 14px;
+    border: 1.5px solid #d1d5db; border-radius: 7px;
+    box-sizing: border-box; background: #fafafa;
+}
+.other-text-row input:focus { border-color: #d97706; background: white; outline: none; }
+
+/* Selection chip list (for the Other-recipients modal) */
+.chip-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 12px; min-height: 28px;
+}
+.chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f3f4f6; color: #374151;
+    border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+    border: 1px solid #e5e7eb;
+}
+.chip-x {
+    cursor: pointer; color: #6b7280; font-weight: 700;
+    line-height: 1; padding: 0 2px;
+}
+.chip-x:hover { color: #dc2626; }
+.chip-add-row {
+    display: flex; gap: 8px; margin-bottom: 10px;
+}
+.chip-add-row input {
+    flex: 1; padding: 9px 12px; font-size: 13px;
+    border: 1.5px solid #d1d5db; border-radius: 7px;
+}
+.chip-add-row input:focus { border-color: #6b7280; outline: none; }
+.chip-add-row button {
+    background: #6b7280; color: white; border: none;
+    padding: 9px 14px; border-radius: 7px; font-size: 13px;
+    font-weight: 600; cursor: pointer;
+}
+.chip-add-row button:hover { background: #4b5563; }
+
+/* --- Dispatch Status Modal --- */
+.disp-recipient-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 6px; font-size: 13px;
+}
+.disp-recipient-row.pending  { border-left: 3px solid #f59e0b; background: #fffbeb; cursor: pointer; }
+.disp-recipient-row.pending:hover { background: #fef3c7; }
+.disp-recipient-row.confirmed { border-left: 3px solid #16a34a; background: #f0fdf4; }
+.disp-recipient-name { font-weight: 600; }
+.disp-recipient-status {
+    font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px;
+}
+.disp-recipient-status.pending   { background: #fef3c7; color: #92400e; }
+.disp-recipient-status.confirmed { background: #dcfce7; color: #166534; }
+.disp-recipient-detail { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* --- Confirm Receipt Modal --- */
+#confirmReceiptModal { z-index: 4000; }
+.confirm-modal-box {
+    background: white; border-radius: 12px; padding: 24px 28px;
+    width: 400px; max-width: 92vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.confirm-modal-box h3 { margin: 0 0 6px; color: #16a34a; font-size: 17px; }
+.confirm-modal-box p { margin: 0 0 14px; font-size: 12px; color: #666; }
+.confirm-modal-box label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px; }
+.confirm-modal-box input {
+    width: 100%; padding: 10px 12px; font-size: 14px;
+    border: 1.5px solid #c0c0c0; border-radius: 7px; margin-bottom: 14px; box-sizing: border-box;
+}
+
+/* --- Footer --- */
+.footer {
+    position: fixed; bottom: 0; width: 100%;
+    text-align: center; padding: 10px; font-size: 13px;
+    background: #0b3d91; color: white;
+}
+</style>
+</head>
+<body>
+
+<div class="connection-banner" id="connectionBanner"></div>
+<div class="queue-badge" id="queueBadge">📤 <span id="queueCount">0</span> scans pending sync</div>
+
+<div class="header">
+    <div class="header-center-content">
+        <img src="ifugaologo.png" class="logo" onerror="this.style.display='none'">
+        <img src="bagologo.png" class="logo" onerror="this.style.display='none'">
+        <div class="header-title">
+            <div class="line1">Republic of the Philippines</div>
+            <div class="line2">Cordillera Administrative Region</div>
+            <div class="line3">Province of Ifugao</div>
+            <div class="line4">Document Tracking System (DTS)</div>
+        </div>
+        <img src="rice.png" class="logo" onerror="this.style.display='none'">
+    </div>
+    <div class="header-clock" id="clock"></div>
+</div>
+
+<div class="main">
+    <!-- SCANNER PANEL -->
+    <div class="scanner-panel">
+        <h2>QR Document Scanner</h2>
+        <p>Select an action, then scan the document QR code.</p>
+        <input type="hidden" id="office" value="PGO">
+
+        <div class="scan-buttons-grid">
+            <div class="scan-card card-in" id="cardIn" onclick="activateCard('PROCESS')">
+                <div class="scan-card-icon">🟢</div>
+                <div class="scan-card-label">Receive</div>
+                <div class="scan-card-desc">Document IN</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputIn" placeholder="Scan QR..." onfocus="activateScanner()" oninput="autoSend('PROCESS')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+            </div>
+            <div class="scan-card card-out" id="cardOut" onclick="activateCard('TRANSFER')">
+                <div class="scan-card-icon">🔵</div>
+                <div class="scan-card-label">Release</div>
+                <div class="scan-card-desc">Document OUT</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputOut" placeholder="Scan QR..." onfocus="activateScanner()" oninput="autoSend('TRANSFER')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+                <div class="send-many-toggle">
+                    <label><input type="checkbox" id="sendManyCheck" onchange="toggleSendMany()"> Send to multiple offices</label>
+                </div>
+            </div>
+            <div class="scan-card card-final" id="cardFinal" onclick="activateCard('FINAL')">
+                <div class="scan-card-icon">🟡</div>
+                <div class="scan-card-label">Finalize</div>
+                <div class="scan-card-desc">Ends here</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputFinal" placeholder="Scan QR..." onfocus="activateScanner()" oninput="autoSend('FINAL')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+            </div>
+            <div class="scan-card card-dispatch" id="cardDispatch" onclick="activateCard('DISPATCH')">
+                <div class="scan-card-icon">📮</div>
+                <div class="scan-card-label">Dispatch</div>
+                <div class="scan-card-desc">Send outside capitol</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputDispatch" placeholder="Scan QR..." onfocus="activateScanner()" oninput="autoSend('DISPATCH')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="status"></div>
+        <div class="queue-section" id="queueSection">
+            <h4>⏳ Pending Offline Scans</h4>
+            <div id="queueList"></div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h3>Office Information</h3>
+        <div class="badge">Provincial Governors Office</div>
+        <p><strong>System Status:</strong>
+            <span class="connection-status-dot" id="statusDot" style="background:green;"></span>
+            <span id="statusText">Checking...</span>
+        </p>
+        <p id="syncInfo" style="font-size:12px;color:#888;"></p>
+        <hr>
+
+        <h3>🔍 Track Document</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:6px;">Search by title or QR number</p>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Title or QR..." onkeydown="if(event.key==='Enter') searchDocument()">
+            <button onclick="searchDocument()">Search</button>
+        </div>
+        <div id="searchStatus" style="font-size:11px;color:#888;min-height:14px;"></div>
+        <hr>
+
+        <h3>📮 Dispatch Tracker</h3>
+        <p style="font-size:11px;color:#666;margin-bottom:6px;">Track documents sent to municipalities</p>
+        <div class="search-box">
+            <input type="text" id="dispatchSearchInput" placeholder="QR number..." onkeydown="if(event.key==='Enter') lookupDispatch()">
+            <button onclick="lookupDispatch()">Track</button>
+        </div>
+        <div id="dispatchSearchStatus" style="font-size:11px;color:#888;min-height:14px;margin-bottom:6px;"></div>
+        <div class="dispatch-log" id="dispatchLog">
+            <!-- filled dynamically -->
+        </div>
+    </div>
+
+    <!-- LIVE TRACKING -->
+    <div class="live-tracking">
+        <h3>Live Document Tracking</h3>
+        <div id="dashboard"></div>
+    </div>
+</div>
+
+<div class="footer">© 2026 Provincial Government | Information Systems Division | v7.0</div>
+
+<!-- TRACK MODAL -->
+<div class="track-modal-overlay" id="trackModal">
+    <div class="track-modal">
+        <div class="track-modal-header">
+            <button class="track-close" onclick="closeTrackModal()">✕</button>
+            <h3 id="trackModalTitle">Document Trail</h3>
+            <p id="trackModalSub"></p>
+        </div>
+        <div class="track-modal-body" id="trackModalBody"></div>
+    </div>
+</div>
+
+<!-- TITLE MODAL -->
+<div class="modal-overlay" id="titleModal">
+    <div class="modal-box">
+        <h3>📄 New Document Detected</h3>
+        <p>Enter the document details before scanning.</p>
+        <div class="qr-badge" id="modalQrDisplay"></div>
+        <label>Document Title <span style="color:red">*</span></label>
+        <input type="text" id="modalTitle" placeholder="e.g. Budget Report Q1 2026" maxlength="200">
+        <label>Document Type</label>
+        <select id="modalDocType" onchange="onModalDocTypeChange()">
+            <option value="Letter">Letter</option><option value="Resolution">Resolution</option>
+            <option value="Ordinance">Ordinance</option><option value="Memorandum">Memorandum</option>
+            <option value="Report">Report</option><option value="Budget">Budget</option>
+            <option value="Contract">Contract</option><option value="Voucher">Voucher</option>
+            <option value="Request">Request</option><option value="Other">Other (Specify)</option>
+        </select>
+        <div class="other-text-row" id="modalDocTypeOtherWrap">
+            <input type="text" id="modalDocTypeOther" placeholder="Specify document type..." maxlength="80">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelTitleModal()">Cancel</button>
+            <button class="btn-primary" onclick="confirmTitleModal()">Confirm &amp; Scan</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT TITLE MODAL -->
+<div class="modal-overlay" id="editTitleModal">
+    <div class="modal-box">
+        <h3>✏️ Edit Document Title</h3>
+        <p>Update title or type. All offices see the change.</p>
+        <div class="qr-badge" id="editModalQrDisplay"></div>
+        <label>Document Title <span style="color:red">*</span></label>
+        <input type="text" id="editModalTitle" maxlength="200">
+        <label>Document Type</label>
+        <select id="editModalDocType" onchange="onEditModalDocTypeChange()">
+            <option value="Letter">Letter</option><option value="Resolution">Resolution</option>
+            <option value="Ordinance">Ordinance</option><option value="Memorandum">Memorandum</option>
+            <option value="Report">Report</option><option value="Budget">Budget</option>
+            <option value="Contract">Contract</option><option value="Voucher">Voucher</option>
+            <option value="Request">Request</option><option value="Other">Other (Specify)</option>
+        </select>
+        <div class="other-text-row" id="editModalDocTypeOtherWrap">
+            <input type="text" id="editModalDocTypeOther" placeholder="Specify document type..." maxlength="80">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelEditModal()">Cancel</button>
+            <button class="btn-primary" onclick="confirmEditModal()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- DESTINATION SELECTOR MODAL (for OUT send-to-many) -->
+<div class="modal-overlay" id="destModal">
+    <div class="dest-modal-box">
+        <h3 style="color:#1e40af;">📨 Send to Multiple Offices</h3>
+        <p>Select destination offices for this document.</p>
+        <div class="qr-badge" id="destModalQr"></div>
+        <span class="dest-select-all" onclick="toggleAllDest('destGrid')">Select All / Deselect All</span>
+        <div class="dest-count" id="destCount">0 selected</div>
+        <div class="dest-grid" id="destGrid"></div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelDestModal()">Cancel</button>
+            <button class="btn-primary" onclick="confirmDestModal()">Confirm &amp; Send</button>
+        </div>
+    </div>
+</div>
+
+<!-- DISPATCH STEP 1: Category picker -->
+<div class="modal-overlay" id="dispatchCategoryModal">
+    <div class="dest-modal-box" style="width:460px;">
+        <h3 style="color:#6b21a8;">📮 Dispatch — Select Category</h3>
+        <p>Choose where this document is going.</p>
+        <div class="qr-badge" id="dispatchCatModalQr"></div>
+        <div class="cat-grid">
+            <div class="cat-card cat-muni" onclick="openRecipientList('Municipality')">
+                <div class="cat-icon">🏛️</div>
+                <div class="cat-text">
+                    <div class="cat-title">Municipalities</div>
+                    <div class="cat-desc">Send to one or more of the 11 municipalities of Ifugao</div>
+                </div>
+                <div class="cat-arrow">›</div>
+            </div>
+            <div class="cat-card cat-nat" onclick="openRecipientList('National Agency')">
+                <div class="cat-icon">🏢</div>
+                <div class="cat-text">
+                    <div class="cat-title">National Agencies</div>
+                    <div class="cat-desc">DILG, DSWD, DepEd, DOH, DA, DENR, BIR, etc.</div>
+                </div>
+                <div class="cat-arrow">›</div>
+            </div>
+            <div class="cat-card cat-oth" onclick="openOtherRecipients()">
+                <div class="cat-icon">✏️</div>
+                <div class="cat-text">
+                    <div class="cat-title">Others (Specify)</div>
+                    <div class="cat-desc">Type any recipient name not listed above</div>
+                </div>
+                <div class="cat-arrow">›</div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelDispatchCategory()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- DISPATCH STEP 2A: Pre-set recipient list (Municipality OR National Agency) -->
+<div class="modal-overlay" id="recipientModal">
+    <div class="dest-modal-box">
+        <h3 id="recipientModalTitle" style="color:#6b21a8;">📮 Dispatch to...</h3>
+        <p id="recipientModalSub">Select recipients to dispatch this document to.</p>
+        <div class="qr-badge" id="recipientModalQr"></div>
+        <label style="font-size:12px;">Remarks (optional)</label>
+        <input type="text" id="dispatchRemarks" placeholder="e.g. For compliance" style="width:100%;padding:8px;font-size:13px;border:1.5px solid #ccc;border-radius:7px;margin-bottom:10px;box-sizing:border-box;">
+        <span class="dest-select-all" onclick="toggleAllDest('recipientGrid')">Select All / Deselect All</span>
+        <div class="dest-count" id="recipientCount">0 selected</div>
+        <div class="dest-grid" id="recipientGrid"></div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="backToDispatchCategory()">← Back</button>
+            <button class="btn-primary" style="background:#6b21a8;" onclick="confirmDispatchModal()">Dispatch</button>
+        </div>
+    </div>
+</div>
+
+<!-- DISPATCH STEP 2B: Custom "Others" recipients (free text) -->
+<div class="modal-overlay" id="otherRecipientsModal">
+    <div class="dest-modal-box" style="width:480px;">
+        <h3 style="color:#6b7280;">✏️ Other Recipients — Specify</h3>
+        <p>Type each recipient name and press Enter (or click Add). You can add multiple.</p>
+        <div class="qr-badge" id="otherRecipModalQr"></div>
+        <label style="font-size:12px;">Remarks (optional)</label>
+        <input type="text" id="otherDispatchRemarks" placeholder="e.g. For compliance" style="width:100%;padding:8px;font-size:13px;border:1.5px solid #ccc;border-radius:7px;margin-bottom:14px;box-sizing:border-box;">
+        <label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Add Recipient</label>
+        <div class="chip-add-row">
+            <input type="text" id="otherRecipientInput" placeholder="e.g. Office of the Ombudsman, NGO XYZ..." onkeydown="if(event.key==='Enter'){event.preventDefault();addOtherRecipient();}">
+            <button onclick="addOtherRecipient()">+ Add</button>
+        </div>
+        <label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Recipients (<span id="otherChipCount">0</span>)</label>
+        <div class="chip-list" id="otherChipList">
+            <span style="font-size:12px;color:#9ca3af;font-style:italic;" id="otherChipsEmpty">No recipients added yet.</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="backToDispatchCategoryFromOther()">← Back</button>
+            <button class="btn-primary" style="background:#6b7280;" onclick="confirmOtherRecipients()">Dispatch</button>
+        </div>
+    </div>
+</div>
+
+<!-- DISPATCH STATUS MODAL -->
+<div class="track-modal-overlay" id="dispatchStatusModal">
+    <div class="track-modal" style="width:580px;">
+        <div class="track-modal-header" style="background:#6b21a8;">
+            <button class="track-close" onclick="closeDispatchStatusModal()">✕</button>
+            <h3 id="dsmTitle">Dispatch Status</h3>
+            <p id="dsmSub"></p>
+        </div>
+        <div class="track-modal-body" id="dsmBody"></div>
+    </div>
+</div>
+
+<!-- CONFIRM RECEIPT MODAL -->
+<div class="modal-overlay" id="confirmReceiptModal">
+    <div class="confirm-modal-box">
+        <h3>✅ Confirm Receipt</h3>
+        <p id="confirmReceiptInfo"></p>
+        <div class="qr-badge" id="confirmReceiptQr"></div>
+        <label>Received By (name of person) <span style="color:red">*</span></label>
+        <input type="text" id="confirmReceivedBy" placeholder="e.g. Juan Dela Cruz" maxlength="200">
+        <label>Remarks (optional)</label>
+        <input type="text" id="confirmRemarks" placeholder="e.g. Received at municipal hall">
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelConfirmReceipt()">Cancel</button>
+            <button class="btn-primary" style="background:#16a34a;" onclick="submitConfirmReceipt()">Confirm Receipt</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// CONFIG
+// ============================================
+const WEBAPP_URL    = "https://script.google.com/macros/s/AKfycbxfd1fXtD6X4IpLamdZbyJrnb7n4v0__INoWAO44iFZ9-fB1SZAVJvnPnJrXXYumoPH/exec";
+const API_KEY       = "DTS2026";
+const DB_NAME       = "DTS_OfflineDB";
+const DB_VERSION    = 2;
+const QUEUE_STORE   = "pendingScans";
+const SYNC_INTERVAL = 5000;
+
+// ============================================
+// STATE
+// ============================================
+let scannerActivated = false, scanLock = false, scanTimer;
+let isOnline = navigator.onLine, isSyncing = false, db = null;
+let syncRetryDelay = SYNC_INTERVAL;
+const SYNC_MAX_DELAY = 60000;
+let pendingScan = null, pendingSyncScan = null;
+let activeAction = "PROCESS";
+let sendManyEnabled = false;
+let allOffices = [], allRecipients = [];
+let pendingDestScan = null, pendingDispatchQr = null;
+let confirmingQr = "", confirmingRecipient = "";
+
+// ============================================
+// CARD LOGIC
+// ============================================
+function activateCard(action) {
+    activeAction = action;
+    document.querySelectorAll('.scan-card').forEach(function(c) { c.classList.remove('active'); });
+    var map = { PROCESS: 'cardIn', TRANSFER: 'cardOut', FINAL: 'cardFinal', DISPATCH: 'cardDispatch' };
+    document.getElementById(map[action]).classList.add('active');
+    var inputMap = { PROCESS: 'qrInputIn', TRANSFER: 'qrInputOut', FINAL: 'qrInputFinal', DISPATCH: 'qrInputDispatch' };
+    setTimeout(function() { var el = document.getElementById(inputMap[action]); el.focus(); el.select(); }, 80);
+}
+function getActiveInput() {
+    var m = { PROCESS: 'qrInputIn', TRANSFER: 'qrInputOut', FINAL: 'qrInputFinal', DISPATCH: 'qrInputDispatch' };
+    return document.getElementById(m[activeAction]);
+}
+function activateScanner() { scannerActivated = true; }
+function toggleSendMany() { sendManyEnabled = document.getElementById('sendManyCheck').checked; }
+
+// ============================================
+// LOAD OFFICES + RECIPIENTS
+// ============================================
+async function loadOfficeList() {
+    if (allOffices.length > 0) return;
+    try {
+        var d = await (await fetch(WEBAPP_URL + "?offices=1&key=" + API_KEY)).json();
+        if (d.offices) allOffices = d.offices;
+    } catch(e) {}
+}
+let _loadingRecipients = false;
+async function loadRecipientList() {
+    if (allRecipients.length > 0) return;
+    if (_loadingRecipients) {
+        // Another fetch is already in flight — wait for it
+        await new Promise(function(resolve) {
+            var check = setInterval(function() {
+                if (!_loadingRecipients) { clearInterval(check); resolve(); }
+            }, 100);
+        });
+        return;
+    }
+    _loadingRecipients = true;
+    try {
+        var res = await fetch(WEBAPP_URL + "?recipients=1&key=" + encodeURIComponent(API_KEY));
+        var d   = await res.json();
+        if (d.recipients) allRecipients = d.recipients;
+    } catch(e) {
+        console.warn("Could not load recipient list:", e);
+    } finally {
+        _loadingRecipients = false;
+    }
+}
+
+// ============================================
+// DESTINATION SELECTOR (for send-to-many OUT)
+// ============================================
+function showDestModal(qr) {
+    var cur = document.getElementById("office").value.trim().toUpperCase();
+    document.getElementById("destModalQr").textContent = "QR: " + qr;
+    var grid = document.getElementById("destGrid"); grid.innerHTML = "";
+    allOffices.filter(function(o) { return o.trim().toUpperCase() !== cur; }).forEach(function(name) {
+        var div = document.createElement("div"); div.className = "dest-option";
+        div.innerHTML = '<input type="checkbox" value="' + name + '" onchange="updateCount(\'destGrid\',\'destCount\')"><span>' + name + '</span>';
+        div.onclick = function(e) { if (e.target.tagName==='INPUT') return; var cb=div.querySelector('input'); cb.checked=!cb.checked; div.classList.toggle('checked',cb.checked); updateCount('destGrid','destCount'); };
+        grid.appendChild(div);
+    });
+    updateCount('destGrid','destCount');
+    document.getElementById("destModal").classList.add("visible");
+}
+function cancelDestModal() { document.getElementById("destModal").classList.remove("visible"); pendingDestScan = null; scanLock = false; getActiveInput().focus(); }
+async function confirmDestModal() {
+    var dest = getChecked('destGrid');
+    document.getElementById("destModal").classList.remove("visible");
+    if (!pendingDestScan) { scanLock = false; return; }
+    var scan = pendingDestScan; pendingDestScan = null;
+    var actionType = dest ? "TRANSFER_MULTI" : "TRANSFER";
+    if (!isOnline) {
+        await _queueOfflineScan(scan.qr, scan.office, actionType, scan.timestamp, "", "", dest);
+        showOfflineStatus(scan.qr, "TRANSFER"); scanLock = false;
+    } else {
+        await _executeScan(scan.qr, scan.office, actionType, scan.timestamp, "", "", dest);
+    }
+}
+
+// ============================================
+// DISPATCH RECIPIENT SELECTOR
+// ============================================
+// ============================================
+// DISPATCH RECIPIENT FLOW — Category Picker
+// ============================================
+let activeRecipientCategory = "";   // "Municipality" | "National Agency" | "Other"
+let otherChips = [];                // for the custom Others list
+
+function showRecipientModal(qr) {
+    // Step 1: show category picker
+    pendingDispatchQr = qr;
+    document.getElementById("dispatchCatModalQr").textContent = "QR: " + qr;
+    document.getElementById("dispatchCategoryModal").classList.add("visible");
+}
+
+function cancelDispatchCategory() {
+    document.getElementById("dispatchCategoryModal").classList.remove("visible");
+    pendingDispatchQr = null;
+    scanLock = false;
+    getActiveInput().focus();
+}
+
+function backToDispatchCategory() {
+    document.getElementById("recipientModal").classList.remove("visible");
+    document.getElementById("dispatchCategoryModal").classList.add("visible");
+}
+
+function backToDispatchCategoryFromOther() {
+    document.getElementById("otherRecipientsModal").classList.remove("visible");
+    document.getElementById("dispatchCategoryModal").classList.add("visible");
+}
+
+// Step 2A: open the pre-set list filtered by category
+function openRecipientList(category) {
+    activeRecipientCategory = category;
+    document.getElementById("dispatchCategoryModal").classList.remove("visible");
+
+    var qr = pendingDispatchQr;
+    document.getElementById("recipientModalQr").textContent = "QR: " + qr;
+    document.getElementById("dispatchRemarks").value = "";
+    document.getElementById("recipientModalTitle").textContent =
+        category === "Municipality" ? "📮 Dispatch to Municipalities" : "📮 Dispatch to National Agencies";
+    document.getElementById("recipientModalSub").textContent =
+        category === "Municipality"
+            ? "Select municipalities to dispatch this document to."
+            : "Select national agencies to dispatch this document to.";
+
+    var grid = document.getElementById("recipientGrid");
+    grid.innerHTML = "";
+
+    var filtered = allRecipients.filter(function(r) {
+        return r.type && r.type.toLowerCase() === category.toLowerCase();
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#888;font-size:13px;">'
+            + 'No ' + category + 's found in the Recipients sheet.</div>';
+    } else {
+        filtered.forEach(function(r) {
+            var div = document.createElement("div");
+            div.className = "dest-option";
+            div.innerHTML = '<input type="checkbox" value="' + r.name + '" onchange="updateCount(\'recipientGrid\',\'recipientCount\')"><span>' + r.name + '</span>';
+            div.onclick = function(e) {
+                if (e.target.tagName === 'INPUT') return;
+                var cb = div.querySelector('input');
+                cb.checked = !cb.checked;
+                div.classList.toggle('checked', cb.checked);
+                updateCount('recipientGrid','recipientCount');
+            };
+            grid.appendChild(div);
+        });
+    }
+    updateCount('recipientGrid','recipientCount');
+    document.getElementById("recipientModal").classList.add("visible");
+}
+
+// Step 2B: open the custom "Others" entry modal
+function openOtherRecipients() {
+    activeRecipientCategory = "Other";
+    document.getElementById("dispatchCategoryModal").classList.remove("visible");
+    document.getElementById("otherRecipModalQr").textContent = "QR: " + pendingDispatchQr;
+    document.getElementById("otherDispatchRemarks").value = "";
+    document.getElementById("otherRecipientInput").value = "";
+    otherChips = [];
+    renderOtherChips();
+    document.getElementById("otherRecipientsModal").classList.add("visible");
+    setTimeout(function() { document.getElementById("otherRecipientInput").focus(); }, 100);
+}
+
+function addOtherRecipient() {
+    var input = document.getElementById("otherRecipientInput");
+    var val = input.value.trim();
+    if (!val) return;
+    if (val.length > 100) { input.style.borderColor = "red"; return; }
+    // dedupe (case-insensitive)
+    var exists = otherChips.some(function(c) { return c.toLowerCase() === val.toLowerCase(); });
+    if (exists) { input.value = ""; return; }
+    otherChips.push(val);
+    input.value = "";
+    input.style.borderColor = "";
+    renderOtherChips();
+    input.focus();
+}
+
+function removeOtherChip(index) {
+    otherChips.splice(index, 1);
+    renderOtherChips();
+}
+
+function renderOtherChips() {
+    var list = document.getElementById("otherChipList");
+    document.getElementById("otherChipCount").textContent = otherChips.length;
+    if (otherChips.length === 0) {
+        list.innerHTML = '<span style="font-size:12px;color:#9ca3af;font-style:italic;">No recipients added yet.</span>';
+        return;
+    }
+    list.innerHTML = "";
+    otherChips.forEach(function(name, idx) {
+        var chip = document.createElement("span");
+        chip.className = "chip";
+        chip.innerHTML = name + ' <span class="chip-x" onclick="removeOtherChip(' + idx + ')">✕</span>';
+        list.appendChild(chip);
+    });
+}
+
+async function confirmOtherRecipients() {
+    if (otherChips.length === 0) {
+        var input = document.getElementById("otherRecipientInput");
+        input.style.borderColor = "red";
+        input.placeholder = "Add at least one recipient first";
+        setTimeout(function() {
+            input.style.borderColor = "";
+            input.placeholder = "e.g. Office of the Ombudsman, NGO XYZ...";
+        }, 2500);
+        return;
+    }
+    var remarks = document.getElementById("otherDispatchRemarks").value.trim();
+    var recipients = otherChips.join(",");
+    document.getElementById("otherRecipientsModal").classList.remove("visible");
+    await sendDispatchRequest(pendingDispatchQr, recipients, remarks);
+    otherChips = [];
+}
+
+async function confirmDispatchModal() {
+    var recipients = getChecked('recipientGrid');
+    if (!recipients) {
+        var countEl = document.getElementById("recipientCount");
+        var orig = countEl.textContent;
+        countEl.textContent = "⚠️ Please select at least one recipient";
+        countEl.style.color = "#dc2626";
+        setTimeout(function() { countEl.textContent = orig; countEl.style.color = ""; }, 3000);
+        return;
+    }
+    var remarks = document.getElementById("dispatchRemarks").value.trim();
+    document.getElementById("recipientModal").classList.remove("visible");
+    await sendDispatchRequest(pendingDispatchQr, recipients, remarks);
+}
+
+// Shared dispatch sender — used by both pre-set and custom flows
+async function sendDispatchRequest(qr, recipients, remarks) {
+    pendingDispatchQr = null;
+    if (!qr) { scanLock = false; return; }
+    var office = document.getElementById("office").value;
+    var statusDiv = document.getElementById("status");
+    statusDiv.innerHTML = "📮 Dispatching..."; statusDiv.style.color = "#6b21a8";
+    try {
+        var res = await fetch(WEBAPP_URL, {
+            method: "POST",
+            body: new URLSearchParams({ qr: qr, office: office, actionType: "DISPATCH",
+                recipients: recipients, remarks: remarks, key: API_KEY })
+        });
+        var data = await res.json();
+        if (data.action === "DISPATCHED") {
+            statusDiv.innerHTML = "📮 Dispatched: " + qr + " → " + data.newRecipients + " recipient(s)"
+                + (data.skippedDuplicates > 0 ? " (" + data.skippedDuplicates + " already dispatched)" : "");
+            statusDiv.style.color = "#6b21a8";
+            addToDashboard(qr, office, "DISPATCH", data.title || "", false, recipients);
+            loadDispatchLog();
+        } else {
+            statusDiv.innerHTML = "❌ " + (data.error || "Dispatch failed");
+            statusDiv.style.color = "red";
+        }
+    } catch(err) {
+        statusDiv.innerHTML = "❌ Connection error during dispatch.";
+        statusDiv.style.color = "red";
+    }
+    setTimeout(function() { statusDiv.innerHTML = ""; }, 10000);
+    scanLock = false;
+}
+
+// ============================================
+// DISPATCH STATUS / CONFIRMATION
+// ============================================
+async function lookupDispatch() {
+    var qr = document.getElementById("dispatchSearchInput").value.trim();
+    var el = document.getElementById("dispatchSearchStatus");
+    if (!qr) { el.textContent = "Enter a QR number."; el.style.color = "#dc2626"; return; }
+    el.textContent = "Loading..."; el.style.color = "#888";
+    try {
+        var data = await (await fetch(WEBAPP_URL + "?dispatch_status=" + encodeURIComponent(qr) + "&key=" + API_KEY)).json();
+        if (!data.found) { el.textContent = "No dispatch records for: " + qr; return; }
+        el.textContent = data.confirmed + "/" + data.totalRecipients + " confirmed.";
+        el.style.color = data.pending > 0 ? "#d97706" : "#16a34a";
+        showDispatchStatusModal(data);
+    } catch(err) { el.textContent = "Connection error."; el.style.color = "#dc2626"; }
+}
+
+function showDispatchStatusModal(data) {
+    document.getElementById("dsmTitle").textContent = data.title || ("QR: " + data.qr);
+    document.getElementById("dsmSub").textContent = "QR " + data.qr + " · Dispatched by " + data.dispatchedBy + " on " + data.dispatchDate;
+    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">'
+        + '<span class="status-pill dispatched">📮 ' + data.confirmed + '/' + data.totalRecipients + ' confirmed</span>'
+        + (data.pending > 0 ? '<span class="status-pill" style="background:#fef3c7;color:#92400e;">⏳ ' + data.pending + ' pending</span>' : '')
+        + '</div>';
+    html += '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:10px;text-transform:uppercase;">Recipients</div>';
+    data.recipients.forEach(function(r) {
+        var isPending = r.status !== "CONFIRMED";
+        html += '<div class="disp-recipient-row ' + (isPending ? 'pending' : 'confirmed') + '"'
+            + (isPending ? ' onclick="openConfirmReceipt(\'' + data.qr + '\',\'' + r.name.replace(/'/g, "\\'") + '\')"' : '')
+            + '>'
+            + '<div><div class="disp-recipient-name">' + r.name + '</div>';
+        if (!isPending) {
+            html += '<div class="disp-recipient-detail">Received by: ' + r.receivedBy + ' · ' + r.confirmedAt + '</div>';
+        } else {
+            html += '<div class="disp-recipient-detail" style="color:#d97706;">Click to confirm receipt</div>';
+        }
+        html += '</div>'
+            + '<span class="disp-recipient-status ' + (isPending ? 'pending' : 'confirmed') + '">'
+            + (isPending ? '⏳ Pending' : '✅ Confirmed') + '</span>'
+            + '</div>';
+    });
+    document.getElementById("dsmBody").innerHTML = html;
+    document.getElementById("dispatchStatusModal").classList.add("visible");
+}
+function closeDispatchStatusModal() { document.getElementById("dispatchStatusModal").classList.remove("visible"); }
+
+function openConfirmReceipt(qr, recipient) {
+    confirmingQr = qr; confirmingRecipient = recipient;
+    document.getElementById("confirmReceiptQr").textContent = "QR: " + qr;
+    document.getElementById("confirmReceiptInfo").textContent = "Confirming receipt by: " + recipient;
+    document.getElementById("confirmReceivedBy").value = "";
+    document.getElementById("confirmRemarks").value = "";
+    document.getElementById("confirmReceiptModal").classList.add("visible");
+    setTimeout(function() { document.getElementById("confirmReceivedBy").focus(); }, 100);
+}
+function cancelConfirmReceipt() { document.getElementById("confirmReceiptModal").classList.remove("visible"); }
+async function submitConfirmReceipt() {
+    var receivedBy = document.getElementById("confirmReceivedBy").value.trim();
+    if (!receivedBy) { document.getElementById("confirmReceivedBy").style.borderColor = "red"; return; }
+    var remarks = document.getElementById("confirmRemarks").value.trim();
+    document.getElementById("confirmReceiptModal").classList.remove("visible");
+    var statusDiv = document.getElementById("status");
+    try {
+        var res = await fetch(WEBAPP_URL, {
+            method: "POST",
+            body: new URLSearchParams({ qr: confirmingQr, office: document.getElementById("office").value,
+                actionType: "CONFIRM_RECEIPT", recipient: confirmingRecipient,
+                receivedBy: receivedBy, remarks: remarks, key: API_KEY })
+        });
+        var data = await res.json();
+        if (data.action === "CONFIRMED") {
+            statusDiv.innerHTML = "✅ Receipt confirmed: " + confirmingRecipient + " → received by " + receivedBy;
+            statusDiv.style.color = "#16a34a";
+            // Refresh the dispatch status modal
+            closeDispatchStatusModal();
+            var refreshData = await (await fetch(WEBAPP_URL + "?dispatch_status=" + encodeURIComponent(confirmingQr) + "&key=" + API_KEY)).json();
+            if (refreshData.found) showDispatchStatusModal(refreshData);
+            loadDispatchLog();
+        } else if (data.action === "ALREADY_CONFIRMED") {
+            statusDiv.innerHTML = "ℹ️ Already confirmed by " + data.confirmedBy;
+            statusDiv.style.color = "#d97706";
+        } else {
+            statusDiv.innerHTML = "❌ " + (data.error || "Failed"); statusDiv.style.color = "red";
+        }
+    } catch(err) {
+        statusDiv.innerHTML = "❌ Connection error."; statusDiv.style.color = "red";
+    }
+    setTimeout(function() { statusDiv.innerHTML = ""; }, 10000);
+}
+
+// ============================================
+// DISPATCH LOG (sidebar)
+// ============================================
+async function loadDispatchLog() {
+    if (!isOnline) return;
+    try {
+        var data = await (await fetch(WEBAPP_URL + "?dispatch_log=1&key=" + API_KEY)).json();
+        var container = document.getElementById("dispatchLog"); container.innerHTML = "";
+        if (!data.dispatches || data.dispatches.length === 0) {
+            container.innerHTML = '<p style="font-size:11px;color:#aaa;text-align:center;">No dispatches yet.</p>';
+            return;
+        }
+        data.dispatches.slice(0, 8).forEach(function(d) {
+            var pct = d.total > 0 ? Math.round((d.confirmed / d.total) * 100) : 0;
+            var item = document.createElement("div"); item.className = "dispatch-log-item";
+            item.onclick = function() {
+                document.getElementById("dispatchSearchInput").value = d.qr;
+                lookupDispatch();
+            };
+            item.innerHTML = '<div class="dl-title">' + (d.title || d.qr) + '</div>'
+                + '<div class="dl-meta">QR: ' + d.qr + ' · ' + d.confirmed + '/' + d.total + ' confirmed · ' + d.dispatchDate + '</div>'
+                + '<div class="dispatch-progress"><div class="dispatch-progress-fill" style="width:' + pct + '%;"></div></div>';
+            container.appendChild(item);
+        });
+    } catch(e) {}
+}
+
+// ============================================
+// SHARED HELPERS
+// ============================================
+function updateCount(gridId, countId) {
+    var n = document.querySelectorAll('#' + gridId + ' input:checked').length;
+    document.getElementById(countId).textContent = n + " selected";
+    document.querySelectorAll('#' + gridId + ' .dest-option').forEach(function(o) {
+        o.classList.toggle('checked', o.querySelector('input').checked);
+    });
+}
+function toggleAllDest(gridId) {
+    var boxes = document.querySelectorAll('#' + gridId + ' input[type="checkbox"]');
+    var anyOff = false; boxes.forEach(function(cb) { if (!cb.checked) anyOff = true; });
+    boxes.forEach(function(cb) { cb.checked = anyOff; });
+    var countId = gridId === 'destGrid' ? 'destCount' : 'recipientCount';
+    updateCount(gridId, countId);
+}
+function getChecked(gridId) {
+    var names = [];
+    document.querySelectorAll('#' + gridId + ' input:checked').forEach(function(cb) { names.push(cb.value); });
+    return names.join(",");
+}
+
+function showOfflineStatus(qr, actionType) {
+    var statusDiv = document.getElementById("status");
+    var label = _offlineActionLabel(actionType);
+    statusDiv.innerHTML = "📤 QUEUED OFFLINE: " + qr + " (" + label + ")";
+    statusDiv.style.color = "#d97706";
+    setTimeout(function() { statusDiv.innerHTML = ""; }, 12000);
+}
+
+// ============================================
+// INDEXEDDB
+// ============================================
+function addToQueue(d) { return new Promise(function(ok,no) { var r=db.transaction([QUEUE_STORE],"readwrite").objectStore(QUEUE_STORE).add(d); r.onsuccess=function(){ok(r.result)}; r.onerror=function(){no(r.error)}; }); }
+function getAllPending() { return new Promise(function(ok,no) { var r=db.transaction([QUEUE_STORE],"readonly").objectStore(QUEUE_STORE).getAll(); r.onsuccess=function(){ok(r.result)}; r.onerror=function(){no(r.error)}; }); }
+function removeFromQueue(id) { return new Promise(function(ok,no) { var r=db.transaction([QUEUE_STORE],"readwrite").objectStore(QUEUE_STORE).delete(id); r.onsuccess=function(){ok()}; r.onerror=function(){no(r.error)}; }); }
+function countPending() { return new Promise(function(ok,no) { var r=db.transaction([QUEUE_STORE],"readonly").objectStore(QUEUE_STORE).count(); r.onsuccess=function(){ok(r.result)}; r.onerror=function(){no(r.error)}; }); }
+
+const TITLE_STORE = "knownTitles";
+function openDatabase() {
+    return new Promise(function(ok, no) {
+        var req = indexedDB.open(DB_NAME, 2);
+        req.onupgradeneeded = function(e) {
+            var d = e.target.result;
+            if (!d.objectStoreNames.contains(QUEUE_STORE)) { var s = d.createObjectStore(QUEUE_STORE, {keyPath:"id",autoIncrement:true}); s.createIndex("timestamp","timestamp",{unique:false}); }
+            if (!d.objectStoreNames.contains(TITLE_STORE)) { d.createObjectStore(TITLE_STORE, {keyPath:"qr"}); }
+        };
+        req.onsuccess = function(e) { db = e.target.result; ok(db); };
+        req.onerror = function(e) { no(e.target.error); };
+    });
+}
+function _cacheTitle(qr,t,d) { if(!db)return Promise.resolve(); return new Promise(function(ok){try{db.transaction([TITLE_STORE],"readwrite").objectStore(TITLE_STORE).put({qr,title:t,docType:d}).onsuccess=function(){ok()}}catch(e){ok()}}); }
+function _getCachedTitle(qr) { if(!db)return Promise.resolve(null); return new Promise(function(ok){try{var r=db.transaction([TITLE_STORE],"readonly").objectStore(TITLE_STORE).get(qr); r.onsuccess=function(){ok(r.result||null)}; r.onerror=function(){ok(null)}}catch(e){ok(null)}}); }
+function _updateQueueItemTitle(id,t,d) { if(!db)return Promise.resolve(); return new Promise(function(ok){try{var s=db.transaction([QUEUE_STORE],"readwrite").objectStore(QUEUE_STORE); var g=s.get(id); g.onsuccess=function(){if(!g.result){ok();return} var it=g.result;it.title=t;it.docType=d;s.put(it).onsuccess=function(){ok()}}; g.onerror=function(){ok()}}catch(e){ok()}}); }
+async function _queueOfflineScan(qr,of,at,ts,t,d,dest) { await addToQueue({qr,office:of,actionType:at,timestamp:ts,title:t||"",docType:d||"",destinations:dest||""}); var pc=await countPending(); updateQueueBadge(pc); updateQueueDisplay(); }
+
+// ============================================
+// CONNECTION
+// ============================================
+function updateConnectionStatus(s) {
+    var b=document.getElementById("connectionBanner"),d=document.getElementById("statusDot"),t=document.getElementById("statusText");
+    if(s==="offline"){b.className="connection-banner offline visible";b.textContent="⚡ OFFLINE — Scans queued locally";d.style.background="#dc2626";t.textContent="Offline";t.style.color="#dc2626";}
+    else if(s==="syncing"){b.className="connection-banner syncing visible";b.textContent="🔄 SYNCING...";d.style.background="#f59e0b";t.textContent="Syncing...";t.style.color="#d97706";}
+    else{b.className="connection-banner online visible";b.textContent="✅ ONLINE";d.style.background="#16a34a";t.textContent="Online";t.style.color="#16a34a";setTimeout(function(){if(isOnline)b.classList.remove("visible")},3000);}
+}
+window.addEventListener("online",function(){isOnline=true;updateConnectionStatus("online");syncPendingScans();});
+window.addEventListener("offline",function(){isOnline=false;updateConnectionStatus("offline");});
+
+// ============================================
+// SYNC
+// ============================================
+async function syncPendingScans() {
+    if(isSyncing||!isOnline||!db)return;
+    var pending; try{pending=await getAllPending();}catch(e){return;}
+    if(pending.length===0){updateQueueBadge(0);syncRetryDelay=SYNC_INTERVAL;return;}
+    isSyncing=true; updateConnectionStatus("syncing");
+    var syncedCount=0, conflictCount=0;
+    for(var i=0;i<pending.length;i++){
+        var scan=pending[i];
+        try{
+            var sat=scan.actionType+"_OFFLINE";
+            if(scan.actionType==="TRANSFER_MULTI")sat="TRANSFER_MULTI_OFFLINE";
+            var res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({qr:scan.qr,office:scan.office,actionType:sat,timestamp:scan.timestamp,title:scan.title||"",docType:scan.docType||"",destinations:scan.destinations||"",key:API_KEY})});
+            var data=await res.json();
+            if(data.action==="CONFLICT_REJECTED"){conflictCount++;await removeFromQueue(scan.id);addToDashboard(scan.qr,scan.office,"⚠️ CONFLICT","",true);continue;}
+            if(data.action==="NEEDS_TITLE"){isSyncing=false;pendingSyncScan=scan;document.getElementById("modalQrDisplay").textContent="QR: "+scan.qr+" (sync)";document.getElementById("modalTitle").value="";document.getElementById("titleModal").classList.add("visible");return;}
+            if(data.error){continue;}
+            await removeFromQueue(scan.id);syncedCount++;syncRetryDelay=SYNC_INTERVAL;
+            addToDashboard(data.tracking||scan.qr,data.office||scan.office,data.action||scan.actionType,data.title||"",false,data.destinations||scan.destinations||"");
+        }catch(err){isOnline=false;updateConnectionStatus("offline");syncRetryDelay=Math.min(syncRetryDelay*2,SYNC_MAX_DELAY);break;}
+    }
+    isSyncing=false;var rem=await countPending();updateQueueBadge(rem);updateQueueDisplay();
+    if(conflictCount>0){document.getElementById("status").innerHTML="⚠️ "+conflictCount+" conflict(s)";document.getElementById("status").style.color="#b91c1c";setTimeout(function(){document.getElementById("status").innerHTML="";},15000);}
+    if(rem===0&&syncedCount>0){updateConnectionStatus("online");document.getElementById("syncInfo").textContent="✅ Synced "+syncedCount+" scan(s) at "+new Date().toLocaleTimeString();}
+}
+
+// ============================================
+// QUEUE UI
+// ============================================
+function updateQueueBadge(c){document.getElementById("queueCount").textContent=c;document.getElementById("queueBadge").style.display=c>0?"block":"none";}
+async function updateQueueDisplay(){if(!db)return;var s=document.getElementById("queueSection"),l=document.getElementById("queueList");try{var p=await getAllPending();if(p.length===0){s.style.display="none";return;}s.style.display="block";l.innerHTML="";p.forEach(function(sc){var it=document.createElement("div");it.className="queue-item";it.innerHTML="<strong>"+sc.qr+"</strong> → "+_offlineActionLabel(sc.actionType)+" | <small>"+new Date(sc.timestamp).toLocaleTimeString()+"</small>";l.appendChild(it);});}catch(e){s.style.display="none";}}
+
+// ============================================
+// TITLE MODAL — with Other custom doc type
+// ============================================
+function onModalDocTypeChange() {
+    var sel = document.getElementById("modalDocType").value;
+    var wrap = document.getElementById("modalDocTypeOtherWrap");
+    if (sel === "Other") {
+        wrap.classList.add("visible");
+        setTimeout(function() { document.getElementById("modalDocTypeOther").focus(); }, 80);
+    } else {
+        wrap.classList.remove("visible");
+    }
+}
+
+function showTitleModal(qr,of,at,ts,dest){
+    pendingScan={qr,office:of,actionType:at,timestamp:ts,destinations:dest||""};
+    document.getElementById("modalQrDisplay").textContent="QR: "+qr;
+    document.getElementById("modalTitle").value="";
+    document.getElementById("modalDocType").value="Letter";
+    document.getElementById("modalDocTypeOther").value="";
+    document.getElementById("modalDocTypeOtherWrap").classList.remove("visible");
+    document.getElementById("titleModal").classList.add("visible");
+    setTimeout(function(){document.getElementById("modalTitle").focus();},100);
+}
+
+function cancelTitleModal(){
+    document.getElementById("titleModal").classList.remove("visible");
+    pendingScan=null;pendingSyncScan=null;scanLock=false;
+    document.getElementById("status").innerHTML="⚠️ Scan cancelled — title required.";
+    document.getElementById("status").style.color="#d97706";
+    setTimeout(function(){document.getElementById("status").innerHTML=""},8000);
+    getActiveInput().focus();
+}
+
+async function confirmTitleModal(){
+    var t=document.getElementById("modalTitle").value.trim();
+    var d=document.getElementById("modalDocType").value;
+
+    // If "Other" chosen, use the custom field
+    if (d === "Other") {
+        var custom = document.getElementById("modalDocTypeOther").value.trim();
+        if (!custom) {
+            document.getElementById("modalDocTypeOther").style.borderColor = "red";
+            document.getElementById("modalDocTypeOther").focus();
+            return;
+        }
+        d = custom; // store the user-typed type
+        document.getElementById("modalDocTypeOther").style.borderColor = "";
+    }
+
+    if(!t){document.getElementById("modalTitle").style.borderColor="red";return;}
+    document.getElementById("titleModal").classList.remove("visible");
+    if(pendingSyncScan){var si=pendingSyncScan;pendingSyncScan=null;await _updateQueueItemTitle(si.id,t,d);await _cacheTitle(si.qr,t,d);scanLock=false;syncPendingScans();return;}
+    if(!pendingScan){scanLock=false;return;}
+    var sc=pendingScan;pendingScan=null;await _cacheTitle(sc.qr,t,d);
+    if(!isOnline){await _queueOfflineScan(sc.qr,sc.office,sc.actionType,sc.timestamp,t,d,sc.destinations||"");showOfflineStatus(sc.qr,sc.actionType);scanLock=false;}
+    else{await _executeScan(sc.qr,sc.office,sc.actionType,sc.timestamp,t,d,sc.destinations||"");}
+}
+
+// Edit Title Modal — same Other handling
+function onEditModalDocTypeChange() {
+    var sel = document.getElementById("editModalDocType").value;
+    var wrap = document.getElementById("editModalDocTypeOtherWrap");
+    if (sel === "Other") {
+        wrap.classList.add("visible");
+        setTimeout(function() { document.getElementById("editModalDocTypeOther").focus(); }, 80);
+    } else {
+        wrap.classList.remove("visible");
+    }
+}
+
+function cancelEditModal(){document.getElementById("editTitleModal").classList.remove("visible");}
+
+async function confirmEditModal(){
+    var t=document.getElementById("editModalTitle").value.trim();
+    var d=document.getElementById("editModalDocType").value;
+    var qr=document.getElementById("_editQr").value;
+
+    if (d === "Other") {
+        var custom = document.getElementById("editModalDocTypeOther").value.trim();
+        if (!custom) {
+            document.getElementById("editModalDocTypeOther").style.borderColor = "red";
+            document.getElementById("editModalDocTypeOther").focus();
+            return;
+        }
+        d = custom;
+        document.getElementById("editModalDocTypeOther").style.borderColor = "";
+    }
+
+    if(!t)return;
+    document.getElementById("editTitleModal").classList.remove("visible");
+    try{
+        var res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({qr,office:document.getElementById("office").value,actionType:"EDIT_TITLE",title:t,docType:d,key:API_KEY})});
+        var data=await res.json();
+        document.getElementById("status").innerHTML=data.action==="TITLE_UPDATED"?"✅ Updated":"❌ Failed";
+        document.getElementById("status").style.color=data.action==="TITLE_UPDATED"?"green":"red";
+    }catch(e){
+        document.getElementById("status").innerHTML="❌ Error";
+        document.getElementById("status").style.color="red";
+    }
+    setTimeout(function(){document.getElementById("status").innerHTML=""},8000);
+}
+document.addEventListener("DOMContentLoaded",function(){var h=document.createElement("input");h.type="hidden";h.id="_editQr";document.body.appendChild(h);});
+
+// ============================================
+// SCANNER
+// ============================================
+function autoSend(action){if(activeAction!==action)activateCard(action);clearTimeout(scanTimer);scanTimer=setTimeout(function(){sendData(action);},150);}
+
+async function sendData(action){
+    var statusDiv=document.getElementById("status"),inp=getActiveInput();
+    if(!scannerActivated){statusDiv.innerHTML="⚠️ Click a scan card first";statusDiv.style.color="red";inp.value="";inp.focus();return;}
+    if(scanLock)return; scanLock=true;
+    try{
+        var rawQr=inp.value.trim();if(!rawQr)return;
+        if(rawQr.length>100||!/^[A-Za-z0-9\-_\/\.]+$/.test(rawQr)){statusDiv.innerHTML="❌ Invalid QR";statusDiv.style.color="red";inp.value="";inp.focus();return;}
+        var qr=rawQr,office=document.getElementById("office").value,ts=new Date().toISOString();
+        inp.value="";inp.focus();
+
+        // DISPATCH — always show recipient selector
+        if(action==="DISPATCH"){
+            if(!isOnline){
+                statusDiv.innerHTML="❌ Dispatch requires an internet connection.";
+                statusDiv.style.color="red";
+                setTimeout(function(){statusDiv.innerHTML=""},6000);
+                scanLock=false;
+                return;
+            }
+            statusDiv.innerHTML="⏳ Loading recipient list...";
+            statusDiv.style.color="#6b21a8";
+            await loadRecipientList();
+            statusDiv.innerHTML="";
+            if(allRecipients.length===0){
+                statusDiv.innerHTML="❌ Could not load recipients. Check connection and try again.";
+                statusDiv.style.color="red";
+                setTimeout(function(){statusDiv.innerHTML=""},8000);
+                scanLock=false;
+                return;
+            }
+            showRecipientModal(qr);
+            return; // scanLock stays true until modal confirm/cancel
+        }
+
+        // OUT + send-to-many
+        if(action==="TRANSFER"&&sendManyEnabled){
+            await loadOfficeList();
+            pendingDestScan={qr,office,actionType:"TRANSFER_MULTI",timestamp:ts};
+            showDestModal(qr);return;
+        }
+
+        // OFFLINE
+        if(!isOnline){
+            var cached=await _getCachedTitle(qr);
+            if(!cached){pendingScan={qr,office,actionType:action,timestamp:ts,destinations:""};document.getElementById("modalQrDisplay").textContent="QR: "+qr;document.getElementById("modalTitle").value="";document.getElementById("titleModal").classList.add("visible");return;}
+            await _queueOfflineScan(qr,office,action,ts,cached.title,cached.docType,"");
+            showOfflineStatus(qr,action);return;
+        }
+
+        // ONLINE
+        await _executeScan(qr,office,action,ts,"","","");
+    }finally{if(!pendingScan&&!pendingDestScan&&!pendingDispatchQr)scanLock=false;}
+}
+
+async function _executeScan(qr,office,actionType,ts,title,docType,destinations){
+    var statusDiv=document.getElementById("status");
+    try{
+        var res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({qr,office,actionType,timestamp:ts,title,docType,destinations:destinations||"",key:API_KEY})});
+        var data=await res.json();
+        if(data.action==="NEEDS_TITLE"){showTitleModal(qr,office,actionType,ts,destinations);return;}
+        var msg="",color="green";
+        if(data.action==="IN")msg="🟢 Document IN";
+        else if(data.action==="IN(Offline)")msg="🟢 IN (Offline)";
+        else if(data.action==="OUT"){msg="🔵 Document OUT";color="blue";}
+        else if(data.action==="OUT(Offline)"){msg="🔵 OUT (Offline)";color="blue";}
+        else if(data.action==="IN(Final)"||data.action==="FINAL_LOCKED"){msg="🟡 FINALIZED";color="orange";}
+        else if(data.action==="IN(Final,Offline)"){msg="🟡 FINALIZED (Offline)";color="orange";}
+        else if(data.action==="DUPLICATE_IN"){msg="⚠️ Already IN here";color="orange";}
+        else if(data.action==="TRANSFER_INVALID"){msg="❌ "+data.reason;color="red";}
+        else if(data.action==="CONFLICT_REJECTED"){msg="⚠️ Conflict";color="#b91c1c";}
+        else if(data.error){msg="❌ "+data.error;color="red";}
+        else{msg="❌ Unexpected";color="red";}
+        if(data.title&&msg.indexOf("❌")===-1)msg+="<br><small style='color:#555'>"+data.title+"</small>";
+        if(data.destinations&&msg.indexOf("❌")===-1)msg+="<br><small style='color:#1e40af'>📨 → "+data.destinations+"</small>";
+        statusDiv.innerHTML=msg;statusDiv.style.color=color;
+        addToDashboard(data.tracking||qr,data.office||office,data.action||"?",data.title||"",false,data.destinations||"");
+        setTimeout(function(){statusDiv.innerHTML=""},10000);
+    }catch(err){
+        isOnline=false;updateConnectionStatus("offline");
+        try{await addToQueue({qr,office,actionType,timestamp:ts,title:title||"",docType:docType||"",destinations:destinations||""});showOfflineStatus(qr,actionType);var pc=await countPending();updateQueueBadge(pc);updateQueueDisplay();}
+        catch(qe){statusDiv.innerHTML="❌ CRITICAL — note manually: "+qr;statusDiv.style.color="red";}
+    }finally{scanLock=false;}
+}
+
+function _offlineActionLabel(a){if(a==="PROCESS")return"IN(Offline)";if(a==="TRANSFER"||a==="TRANSFER_MULTI")return"OUT(Offline)";if(a==="FINAL")return"IN(Final,Offline)";return a+"(Offline)";}
+
+// ============================================
+// DASHBOARD
+// ============================================
+function loadDashboard(){if(!isOnline)return;fetch(WEBAPP_URL+"?dashboard=1").then(function(r){return r.json()}).then(function(data){var d=document.getElementById("dashboard");d.innerHTML="";data.forEach(function(e){var icon=_actionIcon(e.action),row=document.createElement("div");row.className="doc-row synced";var dh="";if(e.destinations){dh='<div class="dest-badges">';e.destinations.split(",").forEach(function(n){n=n.trim();if(n)dh+='<span class="dest-badge">→ '+n+'</span>';});dh+="</div>";}row.innerHTML="<strong>"+e.number+"</strong>"+(e.title?" <span style='font-size:12px;color:#555'>— "+e.title+"</span>":"")+"<br>"+icon+" "+e.action+" → "+e.office+dh+"<br><small>"+e.time+"</small>";d.appendChild(row);});}).catch(function(){});}
+function _actionIcon(a){if(!a)return"";if(a==="IN")return"🟢";if(a==="IN(Offline)")return"🟢🔌";if(a==="OUT")return"🔵";if(a==="OUT(Offline)")return"🔵🔌";if(a==="AUTO-OUT")return"⚪";if(a==="IN(Final)")return"🟡";if(a==="IN(Final,Offline)")return"🟡🔌";if(a==="DISPATCH")return"📮";if(a.indexOf("QUEUED")===0)return"📤";return"";}
+function addToDashboard(qr,office,status,title,isConflict,destinations){var d=document.getElementById("dashboard"),now=new Date().toLocaleTimeString();var isQ=String(status).indexOf("QUEUED")===0,isO=String(status).indexOf("Offline")!==-1;var icon=isConflict?"⚠️":_actionIcon(status);var cls=isConflict?"doc-row conflict":isQ?"doc-row queued":isO?"doc-row offline-synced":"doc-row synced";var dh="";if(destinations){dh='<div class="dest-badges">';destinations.split(",").forEach(function(n){n=n.trim();if(n)dh+='<span class="dest-badge">→ '+n+'</span>';});dh+="</div>";}var row=document.createElement("div");row.className=cls;row.innerHTML="<strong>"+qr+"</strong>"+(title?" <span style='font-size:12px;color:#555'>— "+title+"</span>":"")+"<br>"+icon+" "+status+" → "+office+dh+"<br><small>"+now+"</small>";d.prepend(row);if(d.children.length>20)d.removeChild(d.lastChild);}
+
+// ============================================
+// SEARCH & TRACK
+// ============================================
+async function searchDocument(){var q=document.getElementById("searchInput").value.trim(),el=document.getElementById("searchStatus");if(!q){el.textContent="Enter a title or QR.";el.style.color="#dc2626";return;}el.textContent="Searching...";el.style.color="#888";try{var data=await(await fetch(WEBAPP_URL+"?search="+encodeURIComponent(q)+"&key="+API_KEY)).json();if(data.error){el.textContent=data.error;el.style.color="#dc2626";return;}if(!data.found){el.textContent="No results for: "+q;el.style.color="#888";return;}el.textContent=data.results.length+" found.";el.style.color="#16a34a";if(data.results.length===1)showTrackModal(data.results[0]);else showSearchResults(data.results);}catch(e){el.textContent="Connection error.";el.style.color="#dc2626";}}
+function showSearchResults(results){var body=document.getElementById("trackModalBody");var html='<p style="font-size:13px;color:#555;margin-bottom:12px;">Click to see trail:</p><div class="search-results">';results.forEach(function(doc,idx){var pill=doc.currentStatus.includes("Finalized")?"finalized":doc.currentStatus.includes("Transit")?"transit":doc.currentStatus.includes("Dispatched")?"dispatched":"in-office";html+='<div class="search-result-item" onclick="showTrackModal(searchResultsCache['+idx+'])"><div class="res-title">'+(doc.title||"(No title)")+'</div><div class="res-meta">QR: '+doc.qr+' · '+doc.totalStops+' scans · <span class="status-pill '+pill+'" style="padding:1px 7px;font-size:10px;">'+doc.currentStatus+'</span>'+(doc.dispatchTotal>0?' · 📮 '+doc.dispatchConfirmed+'/'+doc.dispatchTotal+' confirmed':'')+'</div></div>';});html+='</div>';window.searchResultsCache=results;document.getElementById("trackModalTitle").textContent="Search Results";document.getElementById("trackModalSub").textContent=results.length+" documents";body.innerHTML=html;document.getElementById("trackModal").classList.add("visible");}
+function showTrackModal(doc){document.getElementById("trackModalTitle").textContent=doc.title||("QR: "+doc.qr);document.getElementById("trackModalSub").textContent="QR "+doc.qr+(doc.docType?" · "+doc.docType:"")+" · "+doc.totalStops+" stops";var pillClass=doc.currentStatus.includes("Finalized")?"finalized":doc.currentStatus.includes("Transit")?"transit":doc.currentStatus.includes("Dispatched")?"dispatched":"in-office";var pillIcon=doc.currentStatus.includes("Finalized")?"🟡":doc.currentStatus.includes("Transit")?"🔵":doc.currentStatus.includes("Dispatched")?"📮":"🟢";var html='<span class="status-pill '+pillClass+'">'+pillIcon+' '+doc.currentStatus+'</span>';if(doc.dispatchTotal>0){html+=' <span class="status-pill dispatched" style="cursor:pointer" onclick="document.getElementById(\'dispatchSearchInput\').value=\''+doc.qr+'\';closeTrackModal();lookupDispatch();">📮 '+doc.dispatchConfirmed+'/'+doc.dispatchTotal+' confirmed — click to view</span>';}html+='<div class="doc-meta"><div><span>QR</span><strong>'+doc.qr+'</strong></div><div><span>Type</span><strong>'+(doc.docType||"—")+'</strong></div><div><span>Registered By</span><strong>'+(doc.registeredBy||"—")+'</strong></div><div><span>Date</span><strong>'+(doc.registeredAt||"—")+'</strong></div></div>';if(!doc.trail||doc.trail.length===0){html+='<p style="color:#888;font-size:13px;text-align:center;padding:20px 0;">No scan history.</p>';}else{html+='<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:12px;text-transform:uppercase;">Trail ('+doc.trail.length+')</div><div class="timeline">';doc.trail.forEach(function(stop,idx){var a=stop.action,isIn=a==="IN"||a==="IN(Offline)",isOut=a==="OUT"||a==="OUT(Offline)",isAO=a==="AUTO-OUT",isF=a.indexOf("Final")!==-1,isD=a==="DISPATCH",isOff=a.indexOf("Offline")!==-1;var cc=isF?"action-final":isIn?"action-in":isOut?"action-out":isAO?"action-autoout":isD?"action-dispatch":"";var dc=isF?"#d97706":isIn?"#16a34a":isOut?"#2563eb":isAO?"#9ca3af":isD?"#9333ea":"#6b7280";var ai=isIn?"🟢":isOut?"🔵":isAO?"⚪":isF?"🟡":isD?"📮":"•";var isLast=idx===doc.trail.length-1;html+='<div class="tl-item"><div class="tl-dot" style="background:'+dc+';box-shadow:0 0 0 2px '+dc+'40;"></div><div class="tl-card '+cc+'"><div class="tl-header"><div><div class="tl-action">'+ai+' '+a+(isOff?' <span style="font-size:10px;background:#ffedd5;color:#9a3412;padding:1px 5px;border-radius:4px;">offline</span>':'')+'</div><div class="tl-office">📍 '+stop.office+'</div></div><div class="tl-time">'+stop.timestamp+'</div></div>';if(stop.destinations){html+='<div class="tl-destinations">📨 → '+stop.destinations+'</div>';}if(stop.delayStatus){var isDel=stop.delayStatus.indexOf("DELAYED")!==-1;html+='<span class="tl-delay '+(isDel?"delayed":"ontime")+'">'+(isDel?"⚠️ ":"✅ ")+stop.delayStatus+'</span>';}if(!isLast&&stop.duration&&stop.duration!=="—"){html+='<div class="tl-duration">⏱ '+stop.duration+'</div>';}html+='</div></div>';});html+='</div>';}document.getElementById("trackModalBody").innerHTML=html;document.getElementById("trackModal").classList.add("visible");}
+function closeTrackModal(){document.getElementById("trackModal").classList.remove("visible");}
+document.addEventListener("click",function(e){if(e.target.id==="trackModal")closeTrackModal();if(e.target.id==="dispatchStatusModal")closeDispatchStatusModal();});
+
+// ============================================
+// CLOCK + INIT
+// ============================================
+function updateClock(){var n=new Date();document.getElementById("clock").innerHTML=n.toLocaleDateString()+"<br>"+n.toLocaleTimeString();}
+async function initApp(){
+    setInterval(updateClock,1000);updateClock();
+    try{await openDatabase();}catch(e){document.getElementById("status").innerHTML="⚠️ Offline storage unavailable.";document.getElementById("status").style.color="red";}
+    isOnline=navigator.onLine;updateConnectionStatus(isOnline?"online":"offline");
+    activateCard("PROCESS");
+    loadDashboard();setInterval(loadDashboard,8000);
+    setInterval(function(){syncPendingScans();},SYNC_INTERVAL);
+    if(isOnline){loadOfficeList();loadRecipientList();loadDispatchLog();}
+    if(db){var pc=await countPending();updateQueueBadge(pc);updateQueueDisplay();if(pc>0&&isOnline)syncPendingScans();}
+}
+initApp();
+</script>
+</body>
+</html>

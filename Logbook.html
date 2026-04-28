@@ -1,0 +1,1571 @@
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="PGO Logbook">
+<meta name="theme-color" content="#0f2544">
+<title>PGO Internal Logbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<style>
+:root {
+  --navy:      #0f2544;
+  --navy-mid:  #1a3a6e;
+  --navy-lt:   #254d99;
+  --gold:      #c9a227;
+  --gold-lt:   #f0c84a;
+  --teal:      #0d9488;
+  --teal-lt:   #14b8a6;
+  --green:     #16a34a;
+  --red:       #dc2626;
+  --amber:     #d97706;
+  --bg:        #f4f6fb;
+  --card:      #ffffff;
+  --border:    #dde3ef;
+  --text:      #0f2544;
+  --muted:     #6b7a99;
+  --safe-top:  env(safe-area-inset-top, 0px);
+  --safe-bot:  env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; height: 100dvh;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
+
+.login-screen {
+  display: flex; flex-direction: column;
+  height: 100%; background: var(--navy);
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+}
+.login-emblem {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin-bottom: 40px;
+}
+.login-crest {
+  width: 80px; height: 80px; border-radius: 50%;
+  border: 3px solid var(--gold);
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+}
+.login-title {
+  font-size: 20px; font-weight: 700; color: white;
+  letter-spacing: 0.5px; text-align: center;
+}
+.login-sub {
+  font-size: 12px; color: var(--gold); letter-spacing: 2px;
+  text-transform: uppercase; text-align: center; margin-top: 2px;
+}
+.login-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; padding: 28px 24px;
+  width: 100%; max-width: 360px;
+  backdrop-filter: blur(8px);
+}
+.login-label {
+  font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.5);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px; display: block;
+}
+.login-input {
+  width: 100%; padding: 13px 16px; font-size: 16px;
+  background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 12px; color: white; outline: none; margin-bottom: 18px;
+  font-family: 'DM Sans', sans-serif;
+  -webkit-appearance: none;
+}
+.login-input::placeholder { color: rgba(255,255,255,0.3); }
+.login-input:focus { border-color: var(--gold); background: rgba(255,255,255,0.12); }
+
+.pin-wrap { position: relative; }
+.pin-dots {
+  display: flex; gap: 12px; justify-content: center;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+.pin-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.3);
+  transition: all 0.15s;
+}
+.pin-dot.filled { background: var(--gold); border-color: var(--gold); }
+#pinInput {
+  color: transparent; caret-color: transparent;
+  letter-spacing: 20px; text-align: center;
+}
+#pinInput::-webkit-outer-spin-button,
+#pinInput::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.login-btn {
+  width: 100%; padding: 14px; border: none; border-radius: 12px;
+  background: var(--gold); color: var(--navy);
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; letter-spacing: 0.3px;
+  transition: background 0.15s; margin-top: 4px;
+}
+.login-btn:active { background: var(--gold-lt); }
+.login-error {
+  font-size: 13px; color: #fca5a5; text-align: center;
+  margin-top: 12px; min-height: 20px;
+}
+
+.main-app { display: none; flex-direction: column; height: 100%; height: 100dvh; }
+.main-app.active { display: flex; }
+
+.header {
+  background: var(--navy);
+  padding: calc(var(--safe-top) + 10px) 18px 12px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.header-avatar {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--gold); color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; flex-shrink: 0;
+}
+.header-info { flex: 1; min-width: 0; }
+.header-name { font-size: 14px; font-weight: 700; color: white; }
+.header-role { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin-top: 1px; }
+.header-logout {
+  background: rgba(255,255,255,0.1); border: none;
+  color: rgba(255,255,255,0.6); padding: 6px 12px;
+  border-radius: 8px; font-size: 12px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.panel {
+  display: none; flex-direction: column;
+  flex: 1; overflow-y: auto; min-height: 0;
+  background: var(--bg);
+}
+.panel.active { display: flex; }
+
+.bottom-nav {
+  display: flex; flex-shrink: 0;
+  background: var(--navy);
+  padding-bottom: var(--safe-bot);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; padding: 10px 4px;
+  border: none; background: transparent;
+  color: rgba(255,255,255,0.4); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.3px; transition: color 0.15s;
+  position: relative;
+}
+.nav-btn .nav-icon { font-size: 22px; line-height: 1; }
+.nav-btn.active { color: var(--gold); }
+.nav-badge {
+  position: absolute; top: 6px; right: calc(50% - 16px);
+  background: var(--red); color: white;
+  font-size: 9px; font-weight: 700; border-radius: 10px;
+  padding: 1px 5px; min-width: 16px; text-align: center; display: none;
+}
+.nav-badge.visible { display: block; }
+
+.action-tabs {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0; flex-shrink: 0; background: var(--navy);
+  padding: 0 18px 14px;
+}
+.action-tab {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 10px 4px;
+  border-radius: 12px; cursor: pointer;
+  transition: all 0.2s; border: 2px solid transparent;
+}
+.action-tab.active-in {
+  background: rgba(22,163,74,0.2); border-color: rgba(22,163,74,0.5);
+}
+.action-tab.active-out {
+  background: rgba(201,162,39,0.2); border-color: rgba(201,162,39,0.5);
+}
+.action-tab .tab-icon { font-size: 24px; }
+.action-tab .tab-label {
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.action-tab.active-in  .tab-label { color: #4ade80; }
+.action-tab.active-out .tab-label { color: var(--gold-lt); }
+
+.viewfinder-wrap {
+  flex: 1; position: relative; overflow: hidden;
+  background: #000; min-height: 0;
+}
+#camVideo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+}
+#camCanvas { display: none; }
+
+.scan-overlay {
+  position: absolute; inset: 0;
+  background: radial-gradient(
+    ellipse min(70vw,280px) min(70vw,280px) at 50% 50%,
+    transparent 0%, transparent 48%,
+    rgba(0,0,0,0.6) 68%, rgba(0,0,0,0.8) 100%
+  );
+}
+.scan-frame {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.scan-box {
+  width: min(68vw,270px); height: min(68vw,270px);
+  position: relative;
+}
+.scan-box::before,.scan-box::after,
+.scan-corner-b::before,.scan-corner-b::after {
+  content: ''; position: absolute;
+  width: 28px; height: 28px;
+  border-color: var(--gold); border-style: solid;
+}
+.scan-box::before  { top:0;    left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+.scan-box::after   { top:0;    right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+.scan-corner-b::before { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+.scan-corner-b::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+.scan-laser {
+  position: absolute; left:6px; right:6px; height:2px;
+  background: linear-gradient(90deg,transparent,var(--gold-lt),#fff,var(--gold-lt),transparent);
+  top:0; animation: laserScan 2s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--gold), 0 0 16px rgba(240,200,74,0.4);
+}
+@keyframes laserScan {
+  0%   { top:6px; opacity:1; }
+  49%  { opacity:1; }
+  50%  { top:calc(100% - 8px); opacity:0.6; }
+  100% { top:6px; opacity:1; }
+}
+.scan-hint {
+  position: absolute; bottom:16px; left:0; right:0; text-align:center;
+  color:white; font-size:13px; font-weight:500;
+  text-shadow:0 1px 4px rgba(0,0,0,0.8);
+}
+.scan-mode-pill {
+  position: absolute; top:16px; left:50%; transform:translateX(-50%);
+  padding:5px 16px; border-radius:20px; font-size:12px; font-weight:700;
+  letter-spacing:0.5px; white-space:nowrap;
+}
+.scan-mode-pill.in  { background:rgba(22,163,74,0.85); color:white; }
+.scan-mode-pill.out { background:rgba(201,162,39,0.85); color:var(--navy); }
+.scan-flash {
+  position:absolute; inset:0; background:white; opacity:0;
+  pointer-events:none; transition:opacity 0.05s;
+}
+.scan-flash.flash { opacity:0.5; }
+.cam-off {
+  position:absolute; inset:0; background:#0a1628;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; padding:32px; text-align:center;
+}
+.cam-off-icon { font-size:48px; }
+.cam-off p { font-size:14px; color:rgba(255,255,255,0.6); line-height:1.5; }
+.cam-off-btn {
+  background:var(--gold); color:var(--navy);
+  border:none; padding:12px 28px; border-radius:50px;
+  font-size:14px; font-weight:700; cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+}
+
+.result-bar {
+  flex-shrink:0; background:white; border-top:1px solid var(--border);
+  padding:12px 16px; display:flex; align-items:center; gap:12px;
+  min-height:68px; transition:background 0.2s;
+}
+.result-bar.r-in    { background:#f0fdf4; border-top-color:#86efac; }
+.result-bar.r-out   { background:#fefce8; border-top-color:#fde047; }
+.result-bar.r-error { background:#fff1f2; border-top-color:#fca5a5; }
+.result-bar.r-warn  { background:#fffbeb; border-top-color:#fde68a; }
+.result-icon { font-size:30px; flex-shrink:0; }
+.result-content { flex:1; min-width:0; }
+.result-action { font-size:13px; font-weight:700; }
+.result-detail { font-size:11px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.result-uid {
+  flex-shrink:0; font-family:'DM Mono',monospace;
+  font-size:10px; font-weight:500; color:var(--navy-mid);
+  background:var(--bg); border-radius:6px; padding:3px 8px;
+  border:1px solid var(--border); max-width:90px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+.panel-header {
+  padding:16px 18px 8px; background:white;
+  border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.panel-header-title {
+  font-size:16px; font-weight:700; color:var(--navy);
+}
+.panel-header-sub {
+  font-size:11px; color:var(--muted); margin-top:2px;
+}
+.log-list { padding:12px; display:flex; flex-direction:column; gap:8px; }
+.log-card {
+  background:white; border-radius:12px;
+  padding:12px 14px; border-left:4px solid var(--border);
+  box-shadow:0 1px 4px rgba(0,0,0,0.05);
+}
+.log-card.log-in  { border-left-color:var(--green); }
+.log-card.log-out { border-left-color:var(--gold); }
+.log-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.log-card-title { font-size:13px; font-weight:700; color:var(--navy); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.log-action-badge {
+  flex-shrink:0; font-size:10px; font-weight:700; padding:2px 8px;
+  border-radius:10px; letter-spacing:0.5px;
+}
+.log-action-badge.in  { background:#dcfce7; color:#166534; }
+.log-action-badge.out { background:#fef9c3; color:#854d0e; }
+.log-uid {
+  font-family:'DM Mono',monospace; font-size:10px; color:var(--muted);
+  margin-top:3px;
+}
+.log-notes {
+  font-size:12px; color:#555; margin-top:5px;
+  background:var(--bg); border-radius:6px; padding:5px 8px;
+  font-style:italic;
+}
+.log-meta {
+  font-size:10px; color:var(--muted); margin-top:5px;
+  display:flex; justify-content:space-between;
+}
+.empty-state {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:40px; text-align:center; gap:10px;
+}
+.empty-icon { font-size:44px; }
+.empty-title { font-size:15px; font-weight:700; color:var(--muted); }
+.empty-sub { font-size:13px; color:#94a3b8; }
+
+.stat-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:10px; padding:12px;
+}
+.stat-card {
+  background:white; border-radius:12px; padding:14px 10px;
+  text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.05);
+}
+.stat-num { font-size:28px; font-weight:700; color:var(--navy); line-height:1; }
+.stat-label { font-size:10px; color:var(--muted); margin-top:4px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+
+.section-title {
+  font-size:11px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:0.8px;
+  padding:12px 16px 4px;
+}
+
+.user-row {
+  background:white; margin:0 12px 6px;
+  border-radius:10px; padding:12px 14px;
+  display:flex; align-items:center; gap:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.05);
+}
+.user-avatar {
+  width:36px; height:36px; border-radius:10px;
+  background:var(--navy-mid); color:white;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; flex-shrink:0;
+}
+.user-info { flex:1; }
+.user-name { font-size:13px; font-weight:700; }
+.user-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+.user-stats { font-size:11px; color:var(--muted); text-align:right; line-height:1.6; }
+
+.admin-tabs {
+  display:flex; gap:0; padding:0 12px 10px; flex-shrink:0; background:white;
+}
+.admin-tab {
+  flex:1; padding:8px; border:none; border-radius:8px;
+  background:transparent; font-family:'DM Sans',sans-serif;
+  font-size:12px; font-weight:600; color:var(--muted); cursor:pointer;
+}
+.admin-tab.active { background:var(--navy); color:white; }
+
+.settings-section { padding:12px; }
+.settings-group-label {
+  font-size:10px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:0.8px;
+  padding:8px 4px 6px;
+}
+.settings-row {
+  background:white; border-radius:10px; padding:13px 14px;
+  margin-bottom:6px; display:flex; align-items:center; gap:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.05);
+}
+.settings-row-icon { font-size:20px; flex-shrink:0; }
+.settings-row-text { flex:1; }
+.settings-row-title { font-size:14px; font-weight:600; }
+.settings-row-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.sheet-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.55); z-index:500;
+  align-items:flex-end; justify-content:center;
+}
+.sheet-overlay.visible { display:flex; }
+.sheet {
+  background:white; width:100%; max-width:520px;
+  border-radius:20px 20px 0 0;
+  padding:20px 20px calc(20px + var(--safe-bot));
+  max-height:90vh; overflow-y:auto;
+  animation:slideUp 0.22s ease;
+}
+@keyframes slideUp {
+  from { transform:translateY(50px); opacity:0; }
+  to   { transform:translateY(0);    opacity:1; }
+}
+.sheet-handle {
+  width:36px; height:4px; border-radius:2px;
+  background:var(--border); margin:0 auto 16px;
+}
+.sheet-title { font-size:17px; font-weight:700; color:var(--navy); margin-bottom:4px; }
+.sheet-sub   { font-size:12px; color:var(--muted); margin-bottom:16px; }
+.sheet-doc-card {
+  background:var(--bg); border-radius:10px; padding:12px 14px;
+  margin-bottom:16px; border-left:4px solid var(--navy-mid);
+}
+.sheet-doc-title { font-size:14px; font-weight:700; color:var(--navy); }
+.sheet-doc-uid   { font-family:'DM Mono',monospace; font-size:12px; color:var(--muted); margin-top:3px; }
+.sheet-label {
+  font-size:12px; font-weight:600; color:#374151;
+  margin-bottom:6px; display:block;
+}
+.sheet-input {
+  width:100%; padding:12px 14px; font-size:15px;
+  border:1.5px solid var(--border); border-radius:10px;
+  margin-bottom:14px; outline:none; background:var(--bg);
+  font-family:'DM Sans',sans-serif; -webkit-appearance:none;
+}
+.sheet-input:focus { border-color:var(--navy-mid); background:white; }
+.sheet-input.error { border-color:var(--red); }
+.sheet-textarea {
+  width:100%; padding:12px 14px; font-size:15px;
+  border:1.5px solid var(--border); border-radius:10px;
+  margin-bottom:14px; outline:none; background:var(--bg);
+  font-family:'DM Sans',sans-serif; resize:vertical; min-height:80px;
+  -webkit-appearance:none;
+}
+.sheet-textarea:focus { border-color:var(--navy-mid); background:white; }
+.sheet-actions { display:flex; gap:10px; margin-top:4px; }
+.btn-primary {
+  flex:1; padding:13px; background:var(--navy); color:white;
+  border:none; border-radius:12px; font-size:15px; font-weight:700;
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.btn-primary.green { background:var(--green); }
+.btn-primary.gold  { background:var(--gold); color:var(--navy); }
+.btn-secondary {
+  padding:13px 18px; background:var(--bg); color:var(--muted);
+  border:1.5px solid var(--border); border-radius:12px;
+  font-size:15px; cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+
+.trail-item {
+  display:flex; gap:12px; margin-bottom:12px; align-items:flex-start;
+}
+.trail-dot {
+  width:10px; height:10px; border-radius:50%; margin-top:4px; flex-shrink:0;
+}
+.trail-dot.in  { background:var(--green); }
+.trail-dot.out { background:var(--gold); }
+.trail-body { flex:1; }
+.trail-action { font-size:12px; font-weight:700; }
+.trail-who    { font-size:11px; color:var(--muted); }
+.trail-notes  { font-size:11px; color:#555; font-style:italic; margin-top:3px; }
+.trail-time   { font-size:10px; color:#aaa; margin-top:2px; }
+
+.inline-form {
+  background:var(--bg); border-radius:12px; padding:16px;
+  margin-top:8px; display:none;
+}
+.inline-form.visible { display:block; }
+
+.spinner {
+  display:inline-block; width:18px; height:18px;
+  border:2.5px solid rgba(255,255,255,0.3);
+  border-top-color:white; border-radius:50%;
+  animation:spin 0.7s linear infinite; vertical-align:middle;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.conn-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:#4ade80; display:inline-block; margin-left:6px;
+  vertical-align:middle;
+}
+.conn-dot.offline { background:#f87171; }
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-emblem">
+    <div class="login-crest">📋</div>
+    <div class="login-title">PGO Internal Logbook</div>
+    <div class="login-sub">Province of Ifugao</div>
+  </div>
+
+  <div class="login-card">
+    <label class="login-label">Username</label>
+    <input type="text" id="usernameInput" class="login-input"
+           placeholder="Enter your username"
+           autocomplete="username" autocorrect="off" autocapitalize="none"
+           onkeydown="if(event.key==='Enter') document.getElementById('pinInput').focus()">
+
+    <label class="login-label">PIN</label>
+    <div class="pin-wrap">
+      <input type="password" id="pinInput" class="login-input"
+             inputmode="numeric" maxlength="8" placeholder="••••"
+             autocomplete="current-password"
+             oninput="updatePinDots()"
+             onkeydown="if(event.key==='Enter') doLogin()">
+      <div class="pin-dots" id="pinDots"></div>
+    </div>
+
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div class="main-app" id="mainApp">
+
+  <div class="header">
+    <div class="header-avatar" id="headerAvatar">?</div>
+    <div class="header-info">
+      <div class="header-name" id="headerName">—</div>
+      <div class="header-role" id="headerRole">—</div>
+    </div>
+    <button class="header-logout" onclick="doLogout()">Sign Out</button>
+  </div>
+
+  <div class="panel active" id="panelScan">
+    <div class="action-tabs">
+      <div class="action-tab active-in" id="tabIn" onclick="setMode('IN')">
+        <span class="tab-icon">📥</span>
+        <span class="tab-label">Receive IN</span>
+      </div>
+      <div class="action-tab" id="tabOut" onclick="setMode('OUT')">
+        <span class="tab-icon">📤</span>
+        <span class="tab-label">Release OUT</span>
+      </div>
+    </div>
+
+    <div class="viewfinder-wrap" id="viewfinder">
+      <video id="camVideo" autoplay playsinline muted></video>
+      <canvas id="camCanvas"></canvas>
+      <div class="scan-overlay"></div>
+      <div class="scan-frame">
+        <div class="scan-box">
+          <div class="scan-corner-b"></div>
+          <div class="scan-laser"></div>
+        </div>
+      </div>
+      <div class="scan-mode-pill in" id="modePill">▼ Receiving</div>
+      <div class="scan-hint" id="scanHint">Point at document QR code</div>
+      <div class="scan-flash" id="scanFlash"></div>
+      <div class="cam-off" id="camOff">
+        <div class="cam-off-icon">📷</div>
+        <p>Camera access is needed to scan QR codes.</p>
+        <button class="cam-off-btn" onclick="startCamera()">Enable Camera</button>
+      </div>
+    </div>
+
+    <div class="result-bar" id="resultBar">
+      <span class="result-icon" id="resultIcon">📋</span>
+      <div class="result-content">
+        <div class="result-action" id="resultAction">Ready to scan</div>
+        <div class="result-detail" id="resultDetail">Select IN or OUT then point at a QR code</div>
+      </div>
+      <span class="result-uid" id="resultUid"></span>
+    </div>
+  </div>
+
+  <div class="panel" id="panelLog">
+    <div class="panel-header">
+      <div class="panel-header-title">My Log</div>
+      <div class="panel-header-sub" id="logSubtitle">Your personal activity history</div>
+    </div>
+    <div id="myLogList" style="flex:1;"></div>
+  </div>
+
+  <div class="panel" id="panelSearch">
+    <div class="panel-header">
+      <div class="panel-header-title">Document Trail</div>
+      <div class="panel-header-sub">Search by QR code or UID</div>
+    </div>
+    <div style="padding:12px;">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="trailSearchInput" placeholder="QR code or UID..."
+               style="flex:1;padding:11px 14px;font-size:14px;border:1.5px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;outline:none;background:white;"
+               onkeydown="if(event.key==='Enter') searchTrail()">
+        <button onclick="searchTrail()"
+          style="background:var(--navy);color:white;border:none;padding:11px 18px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">
+          Search
+        </button>
+      </div>
+      <div id="trailStatus" style="font-size:12px;color:var(--muted);margin-top:8px;min-height:16px;"></div>
+    </div>
+    <div id="trailResult" style="flex:1;padding:0 12px 12px;"></div>
+  </div>
+
+  <div class="panel" id="panelAdmin">
+    <div class="panel-header" style="padding-bottom:0;">
+      <div class="panel-header-title">Admin Dashboard</div>
+      <div class="admin-tabs" style="margin-top:10px;padding:0;">
+        <button class="admin-tab active" id="adminTabOverview" onclick="switchAdminTab('overview')">Overview</button>
+        <button class="admin-tab" id="adminTabUsers" onclick="switchAdminTab('users')">Users</button>
+        <button class="admin-tab" id="adminTabAll" onclick="switchAdminTab('all')">All Logs</button>
+      </div>
+    </div>
+    <div id="adminContent" style="flex:1;overflow-y:auto;"></div>
+  </div>
+
+  <div class="panel" id="panelSettings">
+    <div class="panel-header">
+      <div class="panel-header-title">Settings</div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-group-label">Account</div>
+
+      <div class="settings-row">
+        <span class="settings-row-icon">🔑</span>
+        <div class="settings-row-text">
+          <div class="settings-row-title">Change PIN</div>
+          <div class="settings-row-sub">Update your login PIN</div>
+        </div>
+        <button onclick="showChangePinSheet()" style="background:var(--navy);color:white;border:none;padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Change</button>
+      </div>
+
+      <div class="settings-row" id="addUserRow" style="display:none;">
+        <span class="settings-row-icon">👤</span>
+        <div class="settings-row-text">
+          <div class="settings-row-title">Add User</div>
+          <div class="settings-row-sub">Create a new staff or admin account</div>
+        </div>
+        <button onclick="showAddUserSheet()" style="background:var(--teal);color:white;border:none;padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Add</button>
+      </div>
+
+      <div class="settings-group-label" style="margin-top:12px;">System</div>
+
+      <div class="settings-row">
+        <span class="settings-row-icon">📶</span>
+        <div class="settings-row-text">
+          <div class="settings-row-title">Connection</div>
+          <div class="settings-row-sub" id="connText">Checking...</div>
+        </div>
+        <span class="conn-dot" id="connDot"></span>
+      </div>
+
+      <div class="settings-row" onclick="forceSync()" style="cursor:pointer;">
+        <span class="settings-row-icon">🔄</span>
+        <div class="settings-row-text">
+          <div class="settings-row-title">Sync Pending Scans</div>
+          <div class="settings-row-sub" id="syncInfoText">Tap to sync offline queue</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;">
+        PGO Internal Logbook v1.0<br>Province of Ifugao
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="navScan" onclick="showPanel('Scan')">
+      <span class="nav-icon">⬛</span>Scan
+    </button>
+    <button class="nav-btn" id="navLog" onclick="showPanel('Log')">
+      <span class="nav-icon">📖</span>My Log
+    </button>
+    <button class="nav-btn" id="navSearch" onclick="showPanel('Search')">
+      <span class="nav-icon">🔍</span>Trail
+    </button>
+    <button class="nav-btn" id="navAdmin" style="display:none;" onclick="showPanel('Admin')">
+      <span class="nav-icon">⚙️</span>Admin
+    </button>
+    <button class="nav-btn" id="navSettings" onclick="showPanel('Settings')">
+      <span class="nav-icon">👤</span>Profile
+    </button>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="newDocSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📄 New Document</div>
+    <div class="sheet-sub">This QR hasn't been registered yet. Fill in the details below.</div>
+    <div style="background:#e8f0fe;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);" id="newDocQrDisplay"></div>
+    <label class="sheet-label">Document Title <span style="color:var(--red)">*</span></label>
+    <input type="text" class="sheet-input" id="newDocTitle" placeholder="e.g. Letter from DILG re: compliance" maxlength="200">
+    <label class="sheet-label">UID / Reference Number</label>
+    <input type="text" class="sheet-input" id="newDocUid" placeholder="e.g. DILG-2026-04-001" maxlength="80">
+    <label class="sheet-label">Notes (optional)</label>
+    <textarea class="sheet-textarea" id="newDocNotes" placeholder="e.g. Email received from DILG CAR, printed and forwarded..."></textarea>
+    <div class="sheet-actions">
+      <button class="btn-secondary" onclick="closeSheet('newDocSheet')">Cancel</button>
+      <button class="btn-primary green" onclick="confirmNewDoc()">Log IN</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="inSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📥 Receive Document</div>
+    <div class="sheet-sub">Confirm receipt of this document into your log.</div>
+    <div class="sheet-doc-card" id="inDocCard">
+      <div class="sheet-doc-title" id="inDocTitle">—</div>
+      <div class="sheet-doc-uid" id="inDocUid">—</div>
+    </div>
+    <label class="sheet-label">Notes (optional)</label>
+    <textarea class="sheet-textarea" id="inNotes" placeholder="e.g. Received from Budget Office, forwarded to Governor for signature..."></textarea>
+    <div class="sheet-actions">
+      <button class="btn-secondary" onclick="closeSheet('inSheet')">Cancel</button>
+      <button class="btn-primary green" onclick="confirmIn()">Confirm IN</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="outSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📤 Release Document</div>
+    <div class="sheet-sub">Log the release of this document from your custody.</div>
+    <div class="sheet-doc-card" id="outDocCard">
+      <div class="sheet-doc-title" id="outDocTitle">—</div>
+      <div class="sheet-doc-uid" id="outDocUid">—</div>
+    </div>
+    <label class="sheet-label">Notes / Changes / Destination <span style="color:var(--red)">*</span></label>
+    <textarea class="sheet-textarea" id="outNotes" placeholder="e.g. Forwarded to Accounting Office for processing. Governor signed."></textarea>
+    <div id="outNotesError" style="color:var(--red);font-size:12px;margin-top:-10px;margin-bottom:10px;display:none;">Please enter a note or destination.</div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" onclick="closeSheet('outSheet')">Cancel</button>
+      <button class="btn-primary gold" onclick="confirmOut()">Confirm OUT</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="pinSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">🔑 Change PIN</div>
+    <div class="sheet-sub">Enter a new 4–8 digit PIN.</div>
+    <label class="sheet-label">New PIN</label>
+    <input type="password" class="sheet-input" id="newPinInput" inputmode="numeric" maxlength="8" placeholder="••••">
+    <label class="sheet-label">Confirm PIN</label>
+    <input type="password" class="sheet-input" id="confirmPinInput" inputmode="numeric" maxlength="8" placeholder="••••">
+    <div id="pinError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" onclick="closeSheet('pinSheet')">Cancel</button>
+      <button class="btn-primary" onclick="submitChangePin()">Update PIN</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="addUserSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">👤 Add New User</div>
+    <div class="sheet-sub">Create a new Logbook account.</div>
+    <label class="sheet-label">Full Name</label>
+    <input type="text" class="sheet-input" id="newUserFullName" placeholder="e.g. Maria Santos">
+    <label class="sheet-label">Username</label>
+    <input type="text" class="sheet-input" id="newUserUsername" placeholder="e.g. msantos" autocorrect="off" autocapitalize="none">
+    <label class="sheet-label">PIN (4–8 digits)</label>
+    <input type="password" class="sheet-input" id="newUserPin" inputmode="numeric" maxlength="8" placeholder="••••">
+    <label class="sheet-label">Role</label>
+    <select class="sheet-input" id="newUserRole">
+      <option value="staff">Staff</option>
+      <option value="admin">Admin</option>
+    </select>
+    <div id="addUserError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" onclick="closeSheet('addUserSheet')">Cancel</button>
+      <button class="btn-primary" onclick="submitAddUser()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LOGBOOK_URL = "https://script.google.com/macros/s/AKfycbx6_LRxYkOH5B4inUCwuC6H4tSh6mcxucfwxULbS-PLP6Ew6VNhb7jPa0KZ8Zob-xaXSw/exec";
+
+let currentUser    = null;
+let scanMode       = "IN";
+let scanLock       = false;
+let lastQr         = "";
+let lastScanTime   = 0;
+const COOLDOWN     = 3000;
+let videoStream    = null;
+let rafId          = null;
+let pendingQr      = null;
+let pendingDoc     = null;
+let isOnline       = navigator.onLine;
+var _sessionPin    = "";
+
+let db = null;
+const IDB_NAME  = "PGOLogbook";
+const IDB_STORE = "offlineScans";
+
+function openDB() {
+  return new Promise(function(ok, no) {
+    var r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = function(e) {
+      e.target.result.createObjectStore(IDB_STORE, { keyPath:"id", autoIncrement:true });
+    };
+    r.onsuccess = function(e) { db = e.target.result; ok(db); };
+    r.onerror   = function(e) { no(e.target.error); };
+  });
+}
+
+function idbAdd(data) {
+  return new Promise(function(ok,no) {
+    var r = db.transaction([IDB_STORE],"readwrite").objectStore(IDB_STORE).add(data);
+    r.onsuccess = function() { ok(r.result); };
+    r.onerror   = function() { no(r.error); };
+  });
+}
+function idbGetAll() {
+  return new Promise(function(ok,no) {
+    var r = db.transaction([IDB_STORE],"readonly").objectStore(IDB_STORE).getAll();
+    r.onsuccess = function() { ok(r.result); };
+    r.onerror   = function() { no(r.error); };
+  });
+}
+function idbDelete(id) {
+  return new Promise(function(ok,no) {
+    var r = db.transaction([IDB_STORE],"readwrite").objectStore(IDB_STORE).delete(id);
+    r.onsuccess = function() { ok(); };
+    r.onerror   = function() { no(r.error); };
+  });
+}
+async function idbCount() {
+  if (!db) return 0;
+  return new Promise(function(ok) {
+    var r = db.transaction([IDB_STORE],"readonly").objectStore(IDB_STORE).count();
+    r.onsuccess = function() { ok(r.result); };
+    r.onerror   = function() { ok(0); };
+  });
+}
+
+function getSavedPin() { return _sessionPin; }
+
+function updatePinDots() {
+  var len = document.getElementById("pinInput").value.length;
+  var dots = "";
+  for (var i = 0; i < Math.min(len, 8); i++) {
+    dots += '<div class="pin-dot filled"></div>';
+  }
+  document.getElementById("pinDots").innerHTML = dots;
+}
+
+async function doLogin() {
+  var username = document.getElementById("usernameInput").value.trim();
+  var pin      = document.getElementById("pinInput").value.trim();
+  var errEl    = document.getElementById("loginError");
+  var btn      = document.getElementById("loginBtn");
+
+  if (!username || !pin) {
+    errEl.textContent = "Please enter your username and PIN.";
+    return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled  = true;
+  errEl.textContent = "";
+
+  try {
+    var res  = await fetch(LOGBOOK_URL, {
+      method: "POST",
+      body: new URLSearchParams({ action: "login", username: username, pin: pin })
+    });
+    var data = await res.json();
+
+    if (data.ok) {
+      currentUser = { username: data.username, role: data.role, fullName: data.fullName };
+      _sessionPin = pin;
+      enterApp();
+    } else {
+      errEl.textContent = data.error || "Invalid username or PIN.";
+    }
+  } catch(err) {
+    errEl.textContent = "Cannot connect to server. Check your internet connection.";
+  }
+
+  btn.innerHTML = "Sign In";
+  btn.disabled  = false;
+}
+
+function enterApp() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("mainApp").classList.add("active");
+
+  var initials = (currentUser.fullName || currentUser.username)
+    .split(" ").map(function(w){ return w[0]; }).join("").toUpperCase().slice(0,2);
+  document.getElementById("headerAvatar").textContent = initials;
+  document.getElementById("headerName").textContent = currentUser.fullName || currentUser.username;
+  document.getElementById("headerRole").textContent = currentUser.role === "admin" ? "Admin" : "Staff";
+
+  if (currentUser.role === "admin") {
+    document.getElementById("navAdmin").style.display = "";
+    document.getElementById("addUserRow").style.display = "";
+  }
+
+  startCamera();
+  loadMyLog();
+  updateConnectionUI();
+  syncOffline();
+}
+
+function doLogout() {
+  currentUser = null;
+  _sessionPin = "";
+  stopCamera();
+  document.getElementById("mainApp").classList.remove("active");
+  document.getElementById("loginScreen").style.display = "";
+  document.getElementById("usernameInput").value = "";
+  document.getElementById("pinInput").value = "";
+  document.getElementById("loginError").textContent = "";
+  document.getElementById("pinDots").innerHTML = "";
+  setMode("IN");
+}
+
+async function startCamera() {
+  document.getElementById("camOff").style.display = "none";
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    document.getElementById("camOff").style.display = "flex";
+    return;
+  }
+  try {
+    var devices  = await navigator.mediaDevices.enumerateDevices();
+    var cameras  = devices.filter(function(d){ return d.kind === "videoinput"; });
+    var backCam  = cameras.find(function(c){ return /back|rear|env/i.test(c.label); });
+    var deviceId = backCam ? backCam.deviceId : (cameras[0] ? cameras[0].deviceId : null);
+
+    var constraints = {
+      video: deviceId
+        ? { deviceId: { exact: deviceId }, facingMode: "environment" }
+        : { facingMode: "environment" },
+      audio: false
+    };
+
+    if (videoStream) videoStream.getTracks().forEach(function(t){ t.stop(); });
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    var video = document.getElementById("camVideo");
+    video.srcObject = videoStream;
+    await video.play();
+    startScanLoop();
+  } catch(err) {
+    document.getElementById("camOff").style.display = "flex";
+    console.warn("Camera error:", err);
+  }
+}
+
+function stopCamera() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  if (videoStream) { videoStream.getTracks().forEach(function(t){ t.stop(); }); videoStream = null; }
+}
+
+function startScanLoop() {
+  if (rafId) cancelAnimationFrame(rafId);
+  var video  = document.getElementById("camVideo");
+  var canvas = document.getElementById("camCanvas");
+  var ctx    = canvas.getContext("2d", { willReadFrequently: true });
+
+  function tick() {
+    if (!scanLock && video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+
+      if (code && code.data) {
+        var qr  = code.data.trim();
+        var now = Date.now();
+        if ((qr !== lastQr || now - lastScanTime > COOLDOWN) && qr.length > 0 && qr.length <= 100) {
+          lastQr       = qr;
+          lastScanTime = now;
+          onQrDetected(qr);
+        }
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+async function onQrDetected(qr) {
+  if (!currentUser || scanLock) return;
+  if (!/^[A-Za-z0-9\-_\/\.]+$/.test(qr)) return;
+
+  scanLock = true;
+  flashScreen();
+  vibrate([80]);
+
+  pendingQr = qr;
+
+  if (scanMode === "OUT") {
+    var doc = await fetchDoc(qr);
+    if (!doc) {
+      showResult("r-error", "❌", "Document Not Found",
+        "Scan this document IN first before releasing it.", qr);
+      scanLock = false; pendingQr = null;
+      return;
+    }
+    pendingDoc = doc;
+    openOutSheet(doc);
+    return;
+  }
+
+  var doc = await fetchDoc(qr);
+  if (!doc) {
+    pendingDoc = null;
+    openNewDocSheet(qr);
+    return;
+  }
+
+  pendingDoc = doc;
+  openInSheet(doc);
+}
+
+async function fetchDoc(qr) {
+  if (!isOnline) return null;
+  try {
+    var res  = await fetch(LOGBOOK_URL + "?action=get_doc&username=" + encodeURIComponent(currentUser.username)
+                         + "&pin=" + encodeURIComponent(getSavedPin())
+                         + "&qr=" + encodeURIComponent(qr));
+    var data = await res.json();
+    return data.found ? data.doc : null;
+  } catch(e) { return null; }
+}
+
+function setMode(mode) {
+  scanMode = mode;
+  var pill = document.getElementById("modePill");
+  var hint = document.getElementById("scanHint");
+  document.getElementById("tabIn").className  = "action-tab" + (mode === "IN"  ? " active-in"  : "");
+  document.getElementById("tabOut").className = "action-tab" + (mode === "OUT" ? " active-out" : "");
+
+  if (mode === "IN") {
+    pill.textContent = "▼ Receiving";
+    pill.className   = "scan-mode-pill in";
+    hint.textContent = "Point at QR to receive document";
+  } else {
+    pill.textContent = "▲ Releasing";
+    pill.className   = "scan-mode-pill out";
+    hint.textContent = "Point at QR to release document";
+  }
+}
+
+function openSheet(id)  { document.getElementById(id).classList.add("visible"); }
+function closeSheet(id) {
+  document.getElementById(id).classList.remove("visible");
+  scanLock  = false;
+  pendingQr = null;
+  pendingDoc= null;
+}
+
+function openNewDocSheet(qr) {
+  document.getElementById("newDocQrDisplay").textContent = "QR: " + qr;
+  document.getElementById("newDocTitle").value  = "";
+  document.getElementById("newDocUid").value    = "";
+  document.getElementById("newDocNotes").value  = "";
+  document.getElementById("newDocTitle").classList.remove("error");
+  openSheet("newDocSheet");
+  setTimeout(function(){ document.getElementById("newDocTitle").focus(); }, 300);
+}
+
+async function confirmNewDoc() {
+  var title = document.getElementById("newDocTitle").value.trim();
+  var uid   = document.getElementById("newDocUid").value.trim();
+  var notes = document.getElementById("newDocNotes").value.trim();
+
+  if (!title) {
+    document.getElementById("newDocTitle").classList.add("error");
+    document.getElementById("newDocTitle").focus();
+    return;
+  }
+  document.getElementById("newDocTitle").classList.remove("error");
+
+  closeSheet("newDocSheet");
+  await sendLog("IN", pendingQr, title, uid, notes);
+}
+
+function openInSheet(doc) {
+  document.getElementById("inDocTitle").textContent = doc.title;
+  document.getElementById("inDocUid").textContent   = doc.uid || "No UID";
+  document.getElementById("inNotes").value = "";
+  openSheet("inSheet");
+}
+
+async function confirmIn() {
+  var notes = document.getElementById("inNotes").value.trim();
+  var qr    = pendingQr;
+  var doc   = pendingDoc;
+  closeSheet("inSheet");
+  await sendLog("IN", qr, doc.title, doc.uid, notes);
+}
+
+function openOutSheet(doc) {
+  document.getElementById("outDocTitle").textContent = doc.title;
+  document.getElementById("outDocUid").textContent   = doc.uid || "No UID";
+  document.getElementById("outNotes").value = "";
+  document.getElementById("outNotesError").style.display = "none";
+  openSheet("outSheet");
+}
+
+async function confirmOut() {
+  var notes = document.getElementById("outNotes").value.trim();
+  if (!notes) {
+    document.getElementById("outNotesError").style.display = "block";
+    document.getElementById("outNotes").focus();
+    return;
+  }
+  document.getElementById("outNotesError").style.display = "none";
+  var qr  = pendingQr;
+  var doc = pendingDoc;
+  closeSheet("outSheet");
+  await sendLog("OUT", qr, doc.title, doc.uid, notes);
+}
+
+async function sendLog(action, qr, title, uid, notes) {
+  var timestamp = new Date().toISOString();
+
+  if (!isOnline) {
+    if (db) {
+      await idbAdd({ action: action, qr: qr, title: title, uid: uid, notes: notes, timestamp: timestamp,
+                     username: currentUser.username, pin: getSavedPin() });
+    }
+    showResult(action === "IN" ? "r-in" : "r-out",
+      action === "IN" ? "📥" : "📤",
+      action === "IN" ? "Queued: Receive IN" : "Queued: Release OUT",
+      title + (notes ? " — " + notes : ""), qr);
+    updateSyncBadge();
+    return;
+  }
+
+  try {
+    var body = new URLSearchParams({
+      action:   action === "IN" ? "log_in" : "log_out",
+      username: currentUser.username,
+      pin:      getSavedPin(),
+      qr: qr, title: title || "", uid: uid || "", notes: notes || ""
+    });
+    var res  = await fetch(LOGBOOK_URL, { method: "POST", body: body });
+    var data = await res.json();
+
+    if (data.ok) {
+      showResult(
+        action === "IN" ? "r-in" : "r-out",
+        action === "IN" ? "📥" : "📤",
+        action === "IN" ? "✅ Received IN" : "✅ Released OUT",
+        data.title + (notes ? " — " + notes : ""), qr
+      );
+      vibrate([60, 40, 60]);
+      loadMyLog();
+    } else if (data.action === "NEEDS_INFO") {
+      openNewDocSheet(qr);
+    } else {
+      showResult("r-error", "❌", "Error", data.error || "Unknown error", qr);
+    }
+  } catch(err) {
+    isOnline = false;
+    updateConnectionUI();
+    if (db) {
+      await idbAdd({ action: action, qr: qr, title: title, uid: uid, notes: notes, timestamp: timestamp,
+                     username: currentUser.username, pin: getSavedPin() });
+    }
+    showResult("r-warn", "📤", "Queued Offline", "Will sync when connected", qr);
+    updateSyncBadge();
+  }
+}
+
+var resultTimer = null;
+function showResult(cls, icon, action, detail, uid) {
+  var bar = document.getElementById("resultBar");
+  bar.className = "result-bar " + cls;
+  document.getElementById("resultIcon").textContent   = icon;
+  document.getElementById("resultAction").textContent = action;
+  document.getElementById("resultDetail").textContent = detail;
+  document.getElementById("resultUid").textContent    = uid || "";
+  if (resultTimer) clearTimeout(resultTimer);
+  resultTimer = setTimeout(function() {
+    bar.className = "result-bar";
+    document.getElementById("resultIcon").textContent   = "📋";
+    document.getElementById("resultAction").textContent = "Ready to scan";
+    document.getElementById("resultDetail").textContent = "Select IN or OUT then point at a QR code";
+    document.getElementById("resultUid").textContent    = "";
+  }, 6000);
+}
+
+function flashScreen() {
+  var el = document.getElementById("scanFlash");
+  el.classList.add("flash");
+  setTimeout(function(){ el.classList.remove("flash"); }, 120);
+}
+
+function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
+
+async function loadMyLog() {
+  if (!currentUser || !isOnline) return;
+  try {
+    var res  = await fetch(LOGBOOK_URL + "?action=my_log&username="
+      + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin()));
+    var data = await res.json();
+    renderLog("myLogList", data.entries || [], true);
+    var sub = data.entries ? data.entries.length + " entries" : "";
+    document.getElementById("logSubtitle").textContent = sub;
+  } catch(e) {}
+}
+
+function renderLog(containerId, entries, showEmpty) {
+  var container = document.getElementById(containerId);
+  if (!entries || entries.length === 0) {
+    if (showEmpty) {
+      container.innerHTML = '<div class="empty-state">'
+        + '<div class="empty-icon">📭</div>'
+        + '<div class="empty-title">No entries yet</div>'
+        + '<div class="empty-sub">Start scanning documents to build your log</div>'
+        + '</div>';
+    } else {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div></div>';
+    }
+    return;
+  }
+
+  var html = '<div class="log-list">';
+  entries.forEach(function(e) {
+    var isIn  = e.action === "IN";
+    var notes = e.notes ? '<div class="log-notes">' + escHtml(e.notes) + '</div>' : "";
+    html += '<div class="log-card ' + (isIn ? "log-in" : "log-out") + '">'
+      + '<div class="log-card-top">'
+      + '<div class="log-card-title">' + escHtml(e.title || "(no title)") + '</div>'
+      + '<span class="log-action-badge ' + (isIn ? "in" : "out") + '">' + e.action + '</span>'
+      + '</div>'
+      + (e.uid ? '<div class="log-uid">UID: ' + escHtml(e.uid) + '</div>' : '')
+      + notes
+      + '<div class="log-meta"><span>' + escHtml(e.timestamp) + '</span>'
+      + (e.fullName && e.fullName !== (currentUser.fullName||currentUser.username)
+          ? '<span>' + escHtml(e.fullName) + '</span>' : '')
+      + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function searchTrail() {
+  var q      = document.getElementById("trailSearchInput").value.trim();
+  var status = document.getElementById("trailStatus");
+  var result = document.getElementById("trailResult");
+  if (!q) { status.textContent = "Enter a QR code or UID."; return; }
+
+  status.textContent = "Searching..."; result.innerHTML = "";
+  try {
+    var res  = await fetch(LOGBOOK_URL + "?action=doc_trail&username="
+      + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin())
+      + "&qr=" + encodeURIComponent(q));
+    var data = await res.json();
+    if (data.error) { status.textContent = data.error; return; }
+
+    if (!data.trail || data.trail.length === 0) {
+      status.textContent = "No trail found for: " + q;
+      return;
+    }
+
+    status.textContent = data.trail.length + " entries found.";
+
+    var doc = data.doc;
+    var html = "";
+    if (doc) {
+      html += '<div class="sheet-doc-card" style="margin-bottom:12px;">'
+        + '<div class="sheet-doc-title">' + escHtml(doc.title) + '</div>'
+        + '<div class="sheet-doc-uid">UID: ' + escHtml(doc.uid || "—") + ' · QR: ' + escHtml(doc.qr) + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:3px;">Registered by ' + escHtml(doc.registeredBy) + ' on ' + escHtml(doc.date) + '</div>'
+        + '</div>';
+    }
+
+    html += '<div style="padding-left:16px;border-left:2px solid var(--border);">';
+    data.trail.forEach(function(e) {
+      var isIn  = e.action === "IN";
+      html += '<div class="trail-item">'
+        + '<div class="trail-dot ' + (isIn ? "in" : "out") + '"></div>'
+        + '<div class="trail-body">'
+        + '<div class="trail-action">' + (isIn ? "📥 IN" : "📤 OUT") + '</div>'
+        + '<div class="trail-who">' + escHtml(e.fullName || e.username) + '</div>'
+        + (e.notes ? '<div class="trail-notes">' + escHtml(e.notes) + '</div>' : '')
+        + '<div class="trail-time">' + escHtml(e.timestamp) + '</div>'
+        + '</div></div>';
+    });
+    html += '</div>';
+    result.innerHTML = html;
+
+  } catch(err) {
+    status.textContent = "Connection error.";
+  }
+}
+
+var adminTab = "overview";
+
+function switchAdminTab(tab) {
+  adminTab = tab;
+  ["overview","users","all"].forEach(function(t) {
+    document.getElementById("adminTab" + t.charAt(0).toUpperCase() + t.slice(1))
+      .classList.toggle("active", t === tab);
+  });
+  loadAdminContent();
+}
+
+async function loadAdminContent() {
+  var content = document.getElementById("adminContent");
+  content.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">Loading...</div>';
+
+  try {
+    if (adminTab === "overview") {
+      var res  = await fetch(LOGBOOK_URL + "?action=dashboard&username="
+        + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin()));
+      var data = await res.json();
+      if (data.error) { content.innerHTML = '<div style="padding:16px;color:var(--red);">' + data.error + '</div>'; return; }
+
+      var html = '<div class="stat-grid">'
+        + '<div class="stat-card"><div class="stat-num">' + data.totalDocs  + '</div><div class="stat-label">Documents</div></div>'
+        + '<div class="stat-card"><div class="stat-num">' + data.totalLogs  + '</div><div class="stat-label">Log Entries</div></div>'
+        + '<div class="stat-card"><div class="stat-num">' + data.totalUsers + '</div><div class="stat-label">Users</div></div>'
+        + '</div>';
+
+      html += '<div class="section-title">Recent Activity</div>';
+      if (data.recent && data.recent.length > 0) {
+        html += '<div class="log-list">';
+        data.recent.forEach(function(e) {
+          var isIn = e.action === "IN";
+          html += '<div class="log-card ' + (isIn ? "log-in" : "log-out") + '">'
+            + '<div class="log-card-top">'
+            + '<div class="log-card-title">' + escHtml(e.title||"(no title)") + '</div>'
+            + '<span class="log-action-badge ' + (isIn ? "in" : "out") + '">' + e.action + '</span>'
+            + '</div>'
+            + (e.uid ? '<div class="log-uid">UID: ' + escHtml(e.uid) + '</div>' : '')
+            + (e.notes ? '<div class="log-notes">' + escHtml(e.notes) + '</div>' : '')
+            + '<div class="log-meta"><span>' + escHtml(e.timestamp) + '</span><span>' + escHtml(e.fullName||e.username) + '</span></div>'
+            + '</div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div style="padding:20px;text-align:center;color:var(--muted);">No entries yet.</div>';
+      }
+      content.innerHTML = html;
+
+    } else if (adminTab === "users") {
+      var res  = await fetch(LOGBOOK_URL + "?action=list_users&username="
+        + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin()));
+      var data = await res.json();
+      if (data.error) { content.innerHTML = '<div style="padding:16px;color:var(--red);">' + data.error + '</div>'; return; }
+
+      var html = '<div style="height:12px;"></div>';
+      (data.users || []).forEach(function(u) {
+        var initials = (u.fullName || u.username).split(" ").map(function(w){ return w[0]; }).join("").toUpperCase().slice(0,2);
+        html += '<div class="user-row">'
+          + '<div class="user-avatar">' + initials + '</div>'
+          + '<div class="user-info">'
+          + '<div class="user-name">' + escHtml(u.fullName || u.username) + '</div>'
+          + '<div class="user-meta">@' + escHtml(u.username) + ' · ' + u.role + '</div>'
+          + '</div>'
+          + '<div class="user-stats">Joined ' + escHtml(u.created) + '</div>'
+          + '</div>';
+      });
+      content.innerHTML = html;
+
+    } else if (adminTab === "all") {
+      var res  = await fetch(LOGBOOK_URL + "?action=all_log&username="
+        + encodeURIComponent(currentUser.username) + "&pin=" + encodeURIComponent(getSavedPin()));
+      var data = await res.json();
+      if (data.error) { content.innerHTML = '<div style="padding:16px;color:var(--red);">' + data.error + '</div>'; return; }
+      renderLog("adminContent", data.entries || [], false);
+    }
+  } catch(err) {
+    content.innerHTML = '<div style="padding:16px;color:var(--red);">Connection error.</div>';
+  }
+}
+
+function showPanel(name) {
+  var panels = ["Scan","Log","Search","Admin","Settings"];
+  panels.forEach(function(p) {
+    var panel = document.getElementById("panel" + p);
+    var nav   = document.getElementById("nav" + p);
+    if (panel) panel.classList.toggle("active", p === name);
+    if (nav)   nav.classList.toggle("active",   p === name);
+  });
+
+  if (name === "Scan") {
+    if (videoStream && !rafId) startScanLoop();
+  } else {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  if (name === "Log") loadMyLog();
+  if (name === "Admin" && currentUser && currentUser.role === "admin") loadAdminContent();
+  if (name === "Settings") updateConnectionUI();
+}
+
+function showChangePinSheet() { openSheet("pinSheet"); }
+
+async function submitChangePin() {
+  var np  = document.getElementById("newPinInput").value.trim();
+  var cp  = document.getElementById("confirmPinInput").value.trim();
+  var err = document.getElementById("pinError");
+
+  if (!np || !/^\d{4,8}$/.test(np)) {
+    err.textContent = "PIN must be 4-8 digits."; err.style.display = "block"; return;
+  }
+  if (np !== cp) {
+    err.textContent = "PINs do not match."; err.style.display = "block"; return;
+  }
+  err.style.display = "none";
+
+  try {
+    var res  = await fetch(LOGBOOK_URL, {
+      method: "POST",
+      body: new URLSearchParams({ action: "change_pin", username: currentUser.username,
+        pin: getSavedPin(), newPin: np })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      _sessionPin = np;
+      closeSheet("pinSheet");
+      alert("PIN changed successfully!");
+    } else {
+      err.textContent = data.error || "Failed."; err.style.display = "block";
+    }
+  } catch(e) {
+    err.textContent = "Connection error."; err.style.display = "block";
+  }
+}
+
+function showAddUserSheet() { openSheet("addUserSheet"); }
+
+async function submitAddUser() {
+  var fullName = document.getElementById("newUserFullName").value.trim();
+  var username = document.getElementById("newUserUsername").value.trim();
+  var pin      = document.getElementById("newUserPin").value.trim();
+  var role     = document.getElementById("newUserRole").value;
+  var err      = document.getElementById("addUserError");
+
+  if (!username || !pin) {
+    err.textContent = "Username and PIN are required."; err.style.display = "block"; return;
+  }
+  if (!/^\d{4,8}$/.test(pin)) {
+    err.textContent = "PIN must be 4-8 digits."; err.style.display = "block"; return;
+  }
+  err.style.display = "none";
+
+  try {
+    var res  = await fetch(LOGBOOK_URL, {
+      method: "POST",
+      body: new URLSearchParams({ action: "add_user", username: currentUser.username,
+        pin: getSavedPin(), newUser: username, newPin: pin, newName: fullName, newRole: role })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      closeSheet("addUserSheet");
+      alert("User '" + username + "' created successfully!");
+    } else {
+      err.textContent = data.error || "Failed."; err.style.display = "block";
+    }
+  } catch(e) {
+    err.textContent = "Connection error."; err.style.display = "block";
+  }
+}
+
+async function syncOffline() {
+  if (!isOnline || !db) return;
+  var pending;
+  try { pending = await idbGetAll(); } catch(e) { return; }
+  if (!pending || pending.length === 0) return;
+
+  var synced = 0;
+  for (var i = 0; i < pending.length; i++) {
+    var item = pending[i];
+    try {
+      var body = new URLSearchParams({
+        action:   item.action === "IN" ? "log_in" : "log_out",
+        username: item.username,
+        pin:      item.pin || getSavedPin(),
+        qr:       item.qr,
+        title:    item.title || "",
+        uid:      item.uid   || "",
+        notes:    item.notes || ""
+      });
+      var res  = await fetch(LOGBOOK_URL, { method:"POST", body: body });
+      var data = await res.json();
+      if (data.ok || data.error) {
+        await idbDelete(item.id);
+        synced++;
+      }
+    } catch(err) {
+      isOnline = false; updateConnectionUI(); break;
+    }
+  }
+  if (synced > 0) {
+    loadMyLog();
+    updateSyncBadge();
+    document.getElementById("syncInfoText").textContent = "✅ Synced " + synced + " scan(s) at " + new Date().toLocaleTimeString();
+  }
+}
+
+async function forceSync() { await syncOffline(); }
+
+async function updateSyncBadge() {
+  var count = await idbCount();
+  document.getElementById("syncInfoText").textContent =
+    count > 0 ? count + " scan(s) pending sync" : "All synced";
+}
+
+function updateConnectionUI() {
+  var dot  = document.getElementById("connDot");
+  var text = document.getElementById("connText");
+  if (!dot || !text) return;
+  if (isOnline) {
+    dot.classList.remove("offline");
+    text.textContent = "Online — connected";
+  } else {
+    dot.classList.add("offline");
+    text.textContent = "Offline — scans are queued locally";
+  }
+}
+
+window.addEventListener("online",  function(){ isOnline=true;  updateConnectionUI(); syncOffline(); });
+window.addEventListener("offline", function(){ isOnline=false; updateConnectionUI(); });
+
+function escHtml(str) {
+  return String(str || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+async function init() {
+  try { await openDB(); } catch(e) { console.warn("IDB unavailable:", e); }
+  updatePinDots();
+  document.getElementById("usernameInput").focus();
+}
+
+init();
+</script>
+</body>
+</html>

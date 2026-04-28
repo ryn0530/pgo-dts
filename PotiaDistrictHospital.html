@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-Government DTS - Offline Ready</title>
+<style>
+/* --- General Styles --- */
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+                url('rice.png') no-repeat center center / cover;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* --- Header --- */
+.header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: #0b3d91;
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
+    z-index: 10;
+}
+
+.header-center-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.header-title {
+    text-align: center;
+    color: white;
+    line-height: 1.2;
+}
+
+.header-title .line1,
+.header-title .line2,
+.header-title .line3 {
+    font-size: 14px;
+    font-family: "Merriweather", "Times New Roman", serif;
+    letter-spacing: 1px;
+}
+
+.header-title .line4 {
+    font-size: 16px;
+    font-family: "Merriweather", "Times New Roman", serif;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.logo { width: 80px; height: 80px; object-fit: contain; }
+
+.header-clock {
+    position: absolute;
+    top: 50%;
+    right: 80px;
+    transform: translateY(-50%);
+    font-size: 13px;
+    text-align: right;
+}
+
+/* --- Connection Banner --- */
+.connection-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    text-align: center;
+    padding: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    transform: translateY(-100%);
+}
+
+.connection-banner.visible {
+    transform: translateY(0);
+}
+
+.connection-banner.offline {
+    background: linear-gradient(90deg, #dc2626, #b91c1c);
+    color: white;
+}
+
+.connection-banner.syncing {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+    color: white;
+}
+
+.connection-banner.online {
+    background: linear-gradient(90deg, #16a34a, #15803d);
+    color: white;
+}
+
+/* --- Offline Queue Badge --- */
+.queue-badge {
+    position: fixed;
+    top: 135px;
+    right: 20px;
+    z-index: 200;
+    background: #dc2626;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    display: none;
+    animation: pulseQueue 1.5s ease infinite;
+}
+
+@keyframes pulseQueue {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* --- Main Layout --- */
+.main {
+    display: flex;
+    flex: 1;
+    margin-top: 130px;
+    margin-bottom: 80px;
+    padding: 20px;
+    gap: 20px;
+    height: calc(100vh - 210px);
+}
+
+/* --- Columns --- */
+.scanner-panel, .sidebar, .live-tracking {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    padding: 20px;
+    flex: 1;
+}
+
+.live-tracking {
+    flex: 0.8;
+}
+
+/* --- Dashboard --- */
+#dashboard {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+/* --- Scanner --- */
+.scanner-panel h2 {
+    font-size: 28px;
+    color: #0b3d91;
+    margin: 0 0 5px;
+}
+.scanner-panel > p {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #666;
+}
+
+/* --- Three-Button Scanner Grid --- */
+.scan-buttons-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.scan-card {
+    position: relative;
+    border-radius: 10px;
+    padding: 14px 10px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2.5px solid transparent;
+}
+.scan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+.scan-card.active {
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+}
+.scan-card.card-in {
+    background: #f0fdf4; color: #166534; border-color: #bbf7d0;
+}
+.scan-card.card-in.active {
+    border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.18);
+}
+.scan-card.card-out {
+    background: #eff6ff; color: #1e40af; border-color: #bfdbfe;
+}
+.scan-card.card-out.active {
+    border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.18);
+}
+.scan-card.card-final {
+    background: #fffbeb; color: #854d0e; border-color: #fde68a;
+}
+.scan-card.card-final.active {
+    border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,0.18);
+}
+.scan-card-icon {
+    font-size: 28px; line-height: 1; margin-bottom: 6px;
+}
+.scan-card-label {
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 2px;
+}
+.scan-card-desc {
+    font-size: 10.5px; opacity: 0.7; line-height: 1.3;
+}
+.scan-card-input-wrap {
+    display: none; margin-top: 10px;
+}
+.scan-card.active .scan-card-input-wrap {
+    display: block;
+}
+.scan-card-input-wrap input {
+    width: 90%; padding: 12px 8px; font-size: 16px; font-weight: bold;
+    border: 2px solid currentColor; border-radius: 7px; text-align: center;
+    outline: none; background: white; color: #222;
+}
+.scan-card-input-wrap .scan-hint {
+    font-size: 11px; margin-top: 5px; opacity: 0.6;
+    animation: hintPulse 1.2s ease infinite alternate;
+}
+@keyframes hintPulse {
+    0% { opacity: 0.4; }
+    100% { opacity: 0.9; }
+}
+
+/* Send-to-Many toggle on OUT card */
+.send-many-toggle {
+    display: none; margin-top: 8px; text-align: center;
+}
+.scan-card.card-out.active .send-many-toggle {
+    display: block;
+}
+.send-many-toggle label {
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    background: #dbeafe; color: #1e40af; user-select: none;
+}
+.send-many-toggle label:hover { background: #bfdbfe; }
+.send-many-toggle input[type="checkbox"] { accent-color: #2563eb; }
+
+/* Destination badges in dashboard */
+.dest-badges { margin-top: 3px; }
+.dest-badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 1px 7px; border-radius: 10px; background: #dbeafe;
+    color: #1e40af; margin-right: 3px; margin-top: 2px;
+}
+
+.status {
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    min-height: 20px;
+}
+
+
+
+/* --- Office Info --- */
+.sidebar h3 { color: #0b3d91; }
+
+.badge {
+    background: #0b3d91;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.connection-status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+/* --- Tracking --- */
+.doc-row {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    border-left: 4px solid #0b3d91;
+    background: #fafafa;
+    margin-bottom: 4px;
+}
+
+.doc-row.queued {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.doc-row.synced {
+    border-left-color: #16a34a;
+}
+
+/* FIX #12 — conflict entries get a distinct red style */
+.doc-row.conflict {
+    border-left-color: #b91c1c;
+    background: #fff1f2;
+}
+
+/* Offline-tagged entries that have already synced — amber tint */
+.doc-row.offline-synced {
+    border-left-color: #d97706;
+    background: #fffbeb;
+}
+
+/* --- Pending Queue Display --- */
+.queue-section {
+    margin-top: 10px;
+    padding: 10px;
+    background: #fffbeb;
+    border: 1px dashed #f59e0b;
+    border-radius: 8px;
+    display: none;
+}
+
+.queue-section h4 {
+    color: #d97706;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.queue-item {
+    padding: 6px 10px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    border-left: 3px solid #f59e0b;
+}
+
+/* --- Destination Selector Modal --- */
+.dest-modal-box {
+    background: white; border-radius: 12px; padding: 24px 28px;
+    width: 480px; max-width: 94vw; max-height: 80vh;
+    overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.dest-modal-box h3 {
+    margin: 0 0 4px; color: #1e40af; font-size: 17px;
+}
+.dest-modal-box > p {
+    margin: 0 0 16px; font-size: 12px; color: #666;
+}
+.dest-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 16px; max-height: 280px; overflow-y: auto; padding-right: 4px;
+}
+.dest-option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+    cursor: pointer; transition: all 0.15s; font-size: 13px;
+    font-weight: 500; user-select: none;
+}
+.dest-option:hover { border-color: #93c5fd; background: #f0f7ff; }
+.dest-option.checked { border-color: #2563eb; background: #eff6ff; font-weight: 700; }
+.dest-option input[type="checkbox"] { accent-color: #2563eb; width: 16px; height: 16px; }
+.dest-select-all {
+    font-size: 12px; color: #2563eb; cursor: pointer; font-weight: 600;
+    margin-bottom: 10px; display: inline-block;
+}
+.dest-select-all:hover { text-decoration: underline; }
+.dest-count { font-size: 12px; color: #888; margin-bottom: 12px; }
+
+/* Other-text field for custom doc type */
+.other-text-row {
+    display: none; margin-top: 6px; margin-bottom: 14px;
+}
+.other-text-row.visible { display: block; }
+.other-text-row input {
+    width: 100%; padding: 9px 12px; font-size: 14px;
+    border: 1.5px solid #d1d5db; border-radius: 7px;
+    box-sizing: border-box; background: #fafafa;
+}
+.other-text-row input:focus { border-color: #d97706; background: white; outline: none; }
+
+/* --- Footer --- */
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    background: #0b3d91;
+    color: white;
+}
+
+/* --- Title Modal --- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+.modal-box {
+    background: white;
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: 420px;
+    max-width: 92vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-box h3 {
+    margin: 0 0 6px;
+    color: #0b3d91;
+    font-size: 18px;
+}
+.modal-box p {
+    margin: 0 0 18px;
+    font-size: 13px;
+    color: #555;
+}
+.modal-box label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+.modal-box input,
+.modal-box select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1.5px solid #c0c0c0;
+    border-radius: 7px;
+    margin-bottom: 14px;
+    box-sizing: border-box;
+}
+.modal-box input:focus,
+.modal-box select:focus {
+    border-color: #0b3d91;
+    outline: none;
+}
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 6px;
+}
+.btn-primary {
+    background: #0b3d91;
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-primary:hover { background: #0a3580; }
+.btn-secondary {
+    background: white;
+    color: #555;
+    border: 1.5px solid #ccc;
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.btn-secondary:hover { background: #f5f5f5; }
+.qr-badge {
+    display: inline-block;
+    background: #e8f0fe;
+    color: #0b3d91;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+}
+</style>
+</head>
+<body>
+
+<!-- CONNECTION BANNER -->
+<div class="connection-banner" id="connectionBanner"></div>
+
+<!-- QUEUE BADGE -->
+<div class="queue-badge" id="queueBadge">📤 <span id="queueCount">0</span> scans pending sync</div>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-center-content">
+        <img src="ifugaologo.png" class="logo" onerror="this.style.display='none'">
+        <img src="bagologo.png" class="logo" onerror="this.style.display='none'">
+        <div class="header-title">
+            <div class="line1">Republic of the Philippines</div>
+            <div class="line2">Cordillera Administrative Region</div>
+            <div class="line3">Province of Ifugao</div>
+            <div class="line4">Document Tracking System (DTS)</div>
+        </div>
+        <img src="rice.png" class="logo" onerror="this.style.display='none'">
+    </div>
+    <div class="header-clock" id="clock"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+    <!-- Scanner Panel -->
+    <div class="scanner-panel">
+        <h2>QR Document Scanner</h2>
+        <p>Select an action below, then scan the document QR code.</p>
+        <input type="hidden" id="office" value="AlfonsoLista">
+
+        <!-- THREE SCAN BUTTONS -->
+        <div class="scan-buttons-grid">
+            <!-- IN Card -->
+            <div class="scan-card card-in" id="cardIn" onclick="activateCard('PROCESS')">
+                <div class="scan-card-icon">🟢</div>
+                <div class="scan-card-label">Receive</div>
+                <div class="scan-card-desc">Document IN to this office</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputIn" placeholder="Scan QR here..."
+                           onfocus="activateScanner()" oninput="autoSend('PROCESS')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+            </div>
+
+            <!-- OUT Card -->
+            <div class="scan-card card-out" id="cardOut" onclick="activateCard('TRANSFER')">
+                <div class="scan-card-icon">🔵</div>
+                <div class="scan-card-label">Release</div>
+                <div class="scan-card-desc">Document OUT from this office</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputOut" placeholder="Scan QR here..."
+                           onfocus="activateScanner()" oninput="autoSend('TRANSFER')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+                <div class="send-many-toggle">
+                    <label><input type="checkbox" id="sendManyCheck" onchange="toggleSendMany()"> Send to multiple offices</label>
+                </div>
+            </div>
+
+            <!-- FINAL Card -->
+            <div class="scan-card card-final" id="cardFinal" onclick="activateCard('FINAL')">
+                <div class="scan-card-icon">🟡</div>
+                <div class="scan-card-label">Finalize</div>
+                <div class="scan-card-desc">Transaction ends here</div>
+                <div class="scan-card-input-wrap">
+                    <input type="text" id="qrInputFinal" placeholder="Scan QR here..."
+                           onfocus="activateScanner()" oninput="autoSend('FINAL')">
+                    <div class="scan-hint">▲ Scan now</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="status"></div>
+        
+        <!-- Pending Queue Display -->
+        <div class="queue-section" id="queueSection">
+            <h4>⏳ Pending Offline Scans (will sync when online)</h4>
+            <div id="queueList"></div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h3>Office Information</h3>
+        <div class="badge">Potia District Hospital</div>
+        <p><strong>System Status:</strong></p>
+        <p id="systemStatus">
+            <span class="connection-status-dot" id="statusDot" style="background:green;"></span>
+            <span id="statusText">Checking...</span>
+        </p>
+        <hr>
+        <h3>Recent Activity</h3>
+        <p>Scan logs are being recorded in real-time.</p>
+        <p id="syncInfo" style="font-size:12px; color:#666;"></p>
+    </div>
+
+    <!-- Live Tracking -->
+    <div class="live-tracking">
+        <h3>Live Document Tracking</h3>
+        <div id="dashboard"></div>
+    </div>
+</div>
+
+<div class="footer">
+    © 2026 Provincial Government | Information Systems Division | Offline-Ready v7.0
+</div>
+
+<!-- TITLE REGISTRATION MODAL -->
+<div class="modal-overlay" id="titleModal">
+    <div class="modal-box">
+        <h3>📄 New Document Detected</h3>
+        <p>This QR code has not been registered yet. Please enter the document details before scanning.</p>
+        <div class="qr-badge" id="modalQrDisplay"></div>
+        <label>Document Title <span style="color:red">*</span></label>
+        <input type="text" id="modalTitle" placeholder="e.g. Budget Report Q1 2026" maxlength="200">
+        <label>Document Type</label>
+        <select id="modalDocType" onchange="onModalDocTypeChange()"><option value="Letter">Letter</option>
+            <option value="Resolution">Resolution</option>
+            <option value="Ordinance">Ordinance</option>
+            <option value="Memorandum">Memorandum</option>
+            <option value="Report">Report</option>
+            <option value="Budget">Budget</option>
+            <option value="Contract">Contract</option>
+            <option value="Voucher">Voucher</option>
+            <option value="Request">Request</option>
+            <option value="Other">Other (Specify)</option>
+        </select>
+        <div class="other-text-row" id="modalDocTypeOtherWrap">
+            <input type="text" id="modalDocTypeOther" placeholder="Specify document type..." maxlength="80">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelTitleModal()">Cancel</button>
+            <button class="btn-primary" onclick="confirmTitleModal()">Confirm &amp; Scan</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT TITLE MODAL -->
+<div class="modal-overlay" id="editTitleModal">
+    <div class="modal-box">
+        <h3>✏️ Edit Document Title</h3>
+        <p>Update the title or type for this document. All offices will see the change immediately.</p>
+        <div class="qr-badge" id="editModalQrDisplay"></div>
+        <label>Document Title <span style="color:red">*</span></label>
+        <input type="text" id="editModalTitle" placeholder="New title" maxlength="200">
+        <label>Document Type</label>
+        <select id="editModalDocType" onchange="onEditModalDocTypeChange()"><option value="Letter">Letter</option>
+            <option value="Resolution">Resolution</option>
+            <option value="Ordinance">Ordinance</option>
+            <option value="Memorandum">Memorandum</option>
+            <option value="Report">Report</option>
+            <option value="Budget">Budget</option>
+            <option value="Contract">Contract</option>
+            <option value="Voucher">Voucher</option>
+            <option value="Request">Request</option>
+            <option value="Other">Other (Specify)</option>
+        </select>
+        <div class="other-text-row" id="editModalDocTypeOtherWrap">
+            <input type="text" id="editModalDocTypeOther" placeholder="Specify document type..." maxlength="80">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelEditModal()">Cancel</button>
+            <button class="btn-primary" onclick="confirmEditModal()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- SEND-TO-MANY DESTINATION MODAL -->
+<div class="modal-overlay" id="destModal">
+    <div class="dest-modal-box">
+        <h3>📨 Send to Multiple Offices</h3>
+        <p>Select all offices this document is being sent to, then confirm.</p>
+        <div class="qr-badge" id="destModalQr"></div>
+        <span class="dest-select-all" onclick="toggleAllDest()">Select All / Deselect All</span>
+        <div class="dest-count" id="destCount">0 office(s) selected</div>
+        <div class="dest-grid" id="destGrid">
+            <!-- filled dynamically -->
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelDestModal()">Cancel</button>
+            <button class="btn-primary" onclick="confirmDestModal()">Confirm &amp; Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// CONFIGURATION
+// ============================================
+const WEBAPP_URL    = "https://script.google.com/macros/s/AKfycbxfd1fXtD6X4IpLamdZbyJrnb7n4v0__INoWAO44iFZ9-fB1SZAVJvnPnJrXXYumoPH/exec";
+const API_KEY       = "DTS2026";
+const DB_NAME       = "DTS_OfflineDB";
+const DB_VERSION    = 2;
+const QUEUE_STORE   = "pendingScans";
+const SYNC_INTERVAL = 5000;
+
+// ============================================
+// STATE
+// ============================================
+let scannerActivated = false;
+let scanLock         = false;
+let scanTimer;
+let isOnline         = navigator.onLine;
+let isSyncing        = false;
+let db               = null;
+
+// Exponential backoff
+let syncRetryDelay   = SYNC_INTERVAL;
+const SYNC_MAX_DELAY = 60000;
+
+// Title modal state — holds the pending scan while waiting for title input
+let pendingScan = null;
+
+// Holds the queued scan item that came back NEEDS_TITLE during sync
+let pendingSyncScan = null;
+
+// Send-to-Many state
+let sendManyEnabled  = false;
+let allOffices       = [];
+let pendingDestScan  = null;
+
+// ============================================
+// SEND-TO-MANY
+// ============================================
+function toggleSendMany() {
+    sendManyEnabled = document.getElementById('sendManyCheck').checked;
+}
+
+async function loadOfficeList() {
+    if (allOffices.length > 0) return;
+    try {
+        var res  = await fetch(WEBAPP_URL + "?offices=1&key=" + encodeURIComponent(API_KEY));
+        var data = await res.json();
+        if (data.offices && data.offices.length > 0) allOffices = data.offices;
+    } catch(e) { console.warn("Could not load office list:", e); }
+}
+
+function showDestModal(qr) {
+    var currentOffice = document.getElementById("office").value.trim().toUpperCase();
+    document.getElementById("destModalQr").textContent = "QR: " + qr;
+    var grid = document.getElementById("destGrid");
+    grid.innerHTML = "";
+    var offices = allOffices.filter(function(o) { return o.trim().toUpperCase() !== currentOffice; });
+    if (offices.length === 0) {
+        grid.innerHTML = '<p style="color:#888;font-size:13px;grid-column:1/-1;text-align:center;">No other offices found.</p>';
+    }
+    offices.forEach(function(name) {
+        var div = document.createElement("div");
+        div.className = "dest-option";
+        div.innerHTML = '<input type="checkbox" value="' + name + '" onchange="updateDestCount()"><span>' + name + '</span>';
+        div.onclick = function(e) {
+            if (e.target.tagName === 'INPUT') return;
+            var cb = div.querySelector('input');
+            cb.checked = !cb.checked;
+            div.classList.toggle('checked', cb.checked);
+            updateDestCount();
+        };
+        grid.appendChild(div);
+    });
+    updateDestCount();
+    document.getElementById("destModal").classList.add("visible");
+}
+
+function updateDestCount() {
+    var checked = document.querySelectorAll('#destGrid input[type="checkbox"]:checked');
+    document.getElementById("destCount").textContent = checked.length + " office(s) selected";
+    document.querySelectorAll('#destGrid .dest-option').forEach(function(opt) {
+        opt.classList.toggle('checked', opt.querySelector('input').checked);
+    });
+}
+
+function toggleAllDest() {
+    var boxes = document.querySelectorAll('#destGrid input[type="checkbox"]');
+    var anyOff = false;
+    boxes.forEach(function(cb) { if (!cb.checked) anyOff = true; });
+    boxes.forEach(function(cb) { cb.checked = anyOff; });
+    updateDestCount();
+}
+
+function getSelectedDest() {
+    var names = [];
+    document.querySelectorAll('#destGrid input[type="checkbox"]:checked').forEach(function(cb) { names.push(cb.value); });
+    return names.join(",");
+}
+
+function cancelDestModal() {
+    document.getElementById("destModal").classList.remove("visible");
+    pendingDestScan = null;
+    scanLock = false;
+    getActiveInput().focus();
+}
+
+async function confirmDestModal() {
+    var destinations = getSelectedDest();
+    document.getElementById("destModal").classList.remove("visible");
+    if (!pendingDestScan) { scanLock = false; return; }
+    var scan = pendingDestScan;
+    pendingDestScan = null;
+    var effectiveAction = destinations ? "TRANSFER_MULTI" : "TRANSFER";
+
+    if (!isOnline) {
+        await _queueOfflineScan(scan.qr, scan.office, effectiveAction, scan.timestamp, "", "", destinations);
+        var offlineLabel = _offlineActionLabel("TRANSFER");
+        var statusDiv = document.getElementById("status");
+        statusDiv.innerHTML = "📤 QUEUED OFFLINE: " + scan.qr + " (" + offlineLabel + ")"
+            + (destinations ? " → " + destinations : "");
+        statusDiv.style.color = "#d97706";
+        addToDashboard(scan.qr, scan.office, "QUEUED-" + offlineLabel, "", false, destinations);
+        updateQueueBadge(await countPending());
+        updateQueueDisplay();
+        setTimeout(function() { statusDiv.innerHTML = ""; }, 12000);
+        scanLock = false;
+    } else {
+        await _executeScan(scan.qr, scan.office, effectiveAction, scan.timestamp, "", "", destinations);
+    }
+}
+
+// ============================================
+// INDEXEDDB
+// ============================================
+// ── Title cache — persists known QR→title mappings in IndexedDB ─
+const TITLE_STORE = "knownTitles";
+
+function openDatabase() {
+    return new Promise(function(resolve, reject) {
+        var request = indexedDB.open(DB_NAME, 2);
+        request.onupgradeneeded = function(event) {
+            var database = event.target.result;
+            if (!database.objectStoreNames.contains(QUEUE_STORE)) {
+                var store = database.createObjectStore(QUEUE_STORE, { keyPath: "id", autoIncrement: true });
+                store.createIndex("timestamp", "timestamp", { unique: false });
+            }
+            if (!database.objectStoreNames.contains(TITLE_STORE)) {
+                database.createObjectStore(TITLE_STORE, { keyPath: "qr" });
+            }
+        };
+        request.onsuccess = function(event) { db = event.target.result; resolve(db); };
+        request.onerror   = function(event) { reject(event.target.error); };
+    });
+}
+
+function _cacheTitle(qr, title, docType) {
+    if (!db) return Promise.resolve();
+    return new Promise(function(resolve) {
+        try {
+            var tx  = db.transaction([TITLE_STORE], "readwrite");
+            var req = tx.objectStore(TITLE_STORE).put({ qr, title, docType });
+            req.onsuccess = function() { resolve(); };
+            req.onerror   = function() { resolve(); };
+        } catch(e) { resolve(); }
+    });
+}
+
+function _getCachedTitle(qr) {
+    if (!db) return Promise.resolve(null);
+    return new Promise(function(resolve) {
+        try {
+            var tx  = db.transaction([TITLE_STORE], "readonly");
+            var req = tx.objectStore(TITLE_STORE).get(qr);
+            req.onsuccess = function() { resolve(req.result || null); };
+            req.onerror   = function() { resolve(null); };
+        } catch(e) { resolve(null); }
+    });
+}
+
+function _updateQueueItemTitle(id, title, docType) {
+    if (!db) return Promise.resolve();
+    return new Promise(function(resolve) {
+        try {
+            var tx      = db.transaction([QUEUE_STORE], "readwrite");
+            var store   = tx.objectStore(QUEUE_STORE);
+            var getReq  = store.get(id);
+            getReq.onsuccess = function() {
+                if (!getReq.result) { resolve(); return; }
+                var item = getReq.result;
+                item.title   = title;
+                item.docType = docType;
+                var putReq = store.put(item);
+                putReq.onsuccess = function() { resolve(); };
+                putReq.onerror   = function() { resolve(); };
+            };
+            getReq.onerror = function() { resolve(); };
+        } catch(e) { resolve(); }
+    });
+}
+
+async function _queueOfflineScan(qr, office, actionType, timestamp, title, docType, destinations) {
+    await addToQueue({ qr, office, actionType, timestamp, title: title || "", docType: docType || "", destinations: destinations || "" });
+}
+function addToQueue(scanData) {
+    return new Promise(function(resolve, reject) {
+        var tx = db.transaction([QUEUE_STORE], "readwrite");
+        var req = tx.objectStore(QUEUE_STORE).add(scanData);
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror   = function() { reject(req.error); };
+    });
+}
+function getAllPending() {
+    return new Promise(function(resolve, reject) {
+        var tx = db.transaction([QUEUE_STORE], "readonly");
+        var req = tx.objectStore(QUEUE_STORE).getAll();
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror   = function() { reject(req.error); };
+    });
+}
+function removeFromQueue(id) {
+    return new Promise(function(resolve, reject) {
+        var tx = db.transaction([QUEUE_STORE], "readwrite");
+        var req = tx.objectStore(QUEUE_STORE).delete(id);
+        req.onsuccess = function() { resolve(); };
+        req.onerror   = function() { reject(req.error); };
+    });
+}
+function countPending() {
+    return new Promise(function(resolve, reject) {
+        var tx = db.transaction([QUEUE_STORE], "readonly");
+        var req = tx.objectStore(QUEUE_STORE).count();
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror   = function() { reject(req.error); };
+    });
+}
+
+// ============================================
+// CONNECTION
+// ============================================
+function updateConnectionStatus(status) {
+    var banner = document.getElementById("connectionBanner");
+    var dot    = document.getElementById("statusDot");
+    var text   = document.getElementById("statusText");
+    if (status === "offline") {
+        banner.className = "connection-banner offline visible";
+        banner.textContent = "⚡ OFFLINE MODE — Scans are being saved locally and will sync when connection returns";
+        dot.style.background = "#dc2626"; text.textContent = "Offline — Scans queued locally"; text.style.color = "#dc2626";
+    } else if (status === "syncing") {
+        banner.className = "connection-banner syncing visible";
+        banner.textContent = "🔄 SYNCING — Sending queued scans to server...";
+        dot.style.background = "#f59e0b"; text.textContent = "Syncing queued scans..."; text.style.color = "#d97706";
+    } else {
+        banner.className = "connection-banner online visible";
+        banner.textContent = "✅ ONLINE — System connected";
+        dot.style.background = "#16a34a"; text.textContent = "Online — Connected"; text.style.color = "#16a34a";
+        setTimeout(function() { if (isOnline) banner.classList.remove("visible"); }, 3000);
+    }
+}
+window.addEventListener("online",  function() { isOnline = true;  updateConnectionStatus("online");  syncPendingScans(); });
+window.addEventListener("offline", function() { isOnline = false; updateConnectionStatus("offline"); });
+
+// ============================================
+// SYNC ENGINE
+// ============================================
+async function syncPendingScans() {
+    if (isSyncing || !isOnline || !db) return;
+    var pending;
+    try { pending = await getAllPending(); } catch(e) { return; }
+    if (pending.length === 0) { updateQueueBadge(0); syncRetryDelay = SYNC_INTERVAL; return; }
+
+    isSyncing = true;
+    updateConnectionStatus("syncing");
+    var syncedCount = 0, conflictCount = 0;
+
+    for (var i = 0; i < pending.length; i++) {
+        var scan = pending[i];
+        try {
+            // All queued scans are offline by definition
+            var sendActionType = scan.actionType + "_OFFLINE";
+            if (scan.actionType === "TRANSFER_MULTI") sendActionType = "TRANSFER_MULTI_OFFLINE";
+            var response = await fetch(WEBAPP_URL, {
+                method: "POST",
+                body: new URLSearchParams({
+                    qr: scan.qr, office: scan.office,
+                    actionType: sendActionType,
+                    timestamp:  scan.timestamp,
+                    title:      scan.title   || "",
+                    docType:    scan.docType || "",
+                    destinations: scan.destinations || "",
+                    key: API_KEY
+                })
+            });
+            var data = await response.json();
+
+            if (data.action === "CONFLICT_REJECTED") {
+                conflictCount++;
+                await removeFromQueue(scan.id);
+                addToDashboard(scan.qr, scan.office, "⚠️ CONFLICT", "", true);
+                continue;
+            }
+            if (data.action === "NEEDS_TITLE") {
+                // Server has no title for this QR — pause sync and prompt operator.
+                isSyncing = false;
+                pendingSyncScan = scan;
+                document.getElementById("modalQrDisplay").textContent = "QR: " + scan.qr + " (sync pending)";
+                document.getElementById("modalTitle").value   = "";
+                document.getElementById("modalDocType").value = "Letter";
+    document.getElementById("modalDocTypeOther").value = "";
+    document.getElementById("modalDocTypeOtherWrap").classList.remove("visible");
+                var syncNote = document.createElement("p");
+                syncNote.id  = "syncTitleNote";
+                syncNote.style.cssText = "color:#d97706;font-size:12px;margin:-10px 0 10px;";
+                syncNote.textContent = "⚠️ This document was scanned offline. A title is required to complete sync.";
+                var modalBox = document.querySelector(".modal-box");
+                if (!document.getElementById("syncTitleNote")) modalBox.insertBefore(syncNote, modalBox.querySelector("label"));
+                document.getElementById("titleModal").classList.add("visible");
+                setTimeout(function() { document.getElementById("modalTitle").focus(); }, 100);
+                updateQueueBadge(await countPending());
+                updateQueueDisplay();
+                return;
+            }
+            if (data.error) { console.warn("Sync error:", data.error); continue; }
+
+            await removeFromQueue(scan.id);
+            syncedCount++;
+            syncRetryDelay = SYNC_INTERVAL;
+            addToDashboard(data.tracking || scan.qr, data.office || scan.office, data.action || scan.actionType, data.title || scan.title || "", false, data.destinations || scan.destinations || "");
+            document.getElementById("status").innerHTML = "🔄 Synced: " + scan.qr + " → " + (data.action || "OK");
+            document.getElementById("status").style.color = "#16a34a";
+
+        } catch(err) {
+            isOnline = false;
+            updateConnectionStatus("offline");
+            syncRetryDelay = Math.min(syncRetryDelay * 2, SYNC_MAX_DELAY);
+            break;
+        }
+    }
+
+    isSyncing = false;
+    var remaining = await countPending();
+    updateQueueBadge(remaining);
+    updateQueueDisplay();
+
+    if (conflictCount > 0) {
+        var sd = document.getElementById("status");
+        sd.innerHTML = "⚠️ " + conflictCount + " scan(s) rejected — document already updated by another office.";
+        sd.style.color = "#b91c1c";
+        setTimeout(function() { sd.innerHTML = ""; }, 15000);
+    }
+    if (remaining === 0 && syncedCount > 0) {
+        updateConnectionStatus("online");
+        document.getElementById("syncInfo").textContent = "✅ Last sync: " + new Date().toLocaleTimeString() + " (" + syncedCount + " scans synced)";
+        setTimeout(function() { document.getElementById("status").innerHTML = ""; }, 5000);
+    }
+}
+
+// ============================================
+// QUEUE UI
+// ============================================
+function updateQueueBadge(count) {
+    document.getElementById("queueCount").textContent = count;
+    document.getElementById("queueBadge").style.display = count > 0 ? "block" : "none";
+}
+async function updateQueueDisplay() {
+    if (!db) return;
+    var section = document.getElementById("queueSection");
+    var list    = document.getElementById("queueList");
+    try {
+        var pending = await getAllPending();
+        if (pending.length === 0) { section.style.display = "none"; return; }
+        section.style.display = "block";
+        list.innerHTML = "";
+        pending.forEach(function(scan) {
+            var displayAction = _offlineActionLabel(scan.actionType);
+            var titleInfo     = scan.title ? " — " + scan.title : "";
+            var item = document.createElement("div");
+            item.className = "queue-item";
+            item.innerHTML = "<strong>" + scan.qr + "</strong>" + titleInfo + " → "
+                + displayAction + " | <small>" + new Date(scan.timestamp).toLocaleTimeString() + "</small>";
+            list.appendChild(item);
+        });
+    } catch(e) { section.style.display = "none"; }
+}
+
+// ============================================
+// TITLE MODAL
+// ============================================
+function showTitleModal(qr, office, actionType, timestamp, destinations) {
+    pendingScan = { qr, office, actionType, timestamp, destinations: destinations || "" };
+    document.getElementById("modalQrDisplay").textContent = "QR: " + qr;
+    document.getElementById("modalTitle").value   = "";
+    document.getElementById("modalDocType").value = "Letter";
+    document.getElementById("titleModal").classList.add("visible");
+    setTimeout(function() { document.getElementById("modalTitle").focus(); }, 100);
+}
+
+function cancelTitleModal() {
+    document.getElementById("titleModal").classList.remove("visible");
+    var syncNote = document.getElementById("syncTitleNote");
+    if (syncNote) syncNote.parentNode.removeChild(syncNote);
+    var wasSyncItem = !!pendingSyncScan;
+    pendingScan     = null;
+    pendingSyncScan = null;
+    scanLock = false;
+    var msg = wasSyncItem
+        ? "⚠️ Sync skipped for this item — title is required. It remains in the queue."
+        : "⚠️ Scan cancelled — title is required for new documents.";
+    document.getElementById("status").innerHTML = msg;
+    document.getElementById("status").style.color = "#d97706";
+    setTimeout(function() { document.getElementById("status").innerHTML = ""; }, 8000);
+    getActiveInput().focus();
+}
+
+
+function onModalDocTypeChange() {
+    var sel = document.getElementById("modalDocType").value;
+    var wrap = document.getElementById("modalDocTypeOtherWrap");
+    if (sel === "Other") {
+        wrap.classList.add("visible");
+        setTimeout(function() { document.getElementById("modalDocTypeOther").focus(); }, 80);
+    } else {
+        wrap.classList.remove("visible");
+    }
+}
+
+function onEditModalDocTypeChange() {
+    var sel = document.getElementById("editModalDocType").value;
+    var wrap = document.getElementById("editModalDocTypeOtherWrap");
+    if (sel === "Other") {
+        wrap.classList.add("visible");
+        setTimeout(function() { document.getElementById("editModalDocTypeOther").focus(); }, 80);
+    } else {
+        wrap.classList.remove("visible");
+    }
+}
+
+async function confirmTitleModal() {
+    var title   = document.getElementById("modalTitle").value.trim();
+    var docType = document.getElementById("modalDocType").value;
+    if (docType === "Other") {
+        var customType = document.getElementById("modalDocTypeOther").value.trim();
+        if (!customType) {
+            document.getElementById("modalDocTypeOther").style.borderColor = "red";
+            document.getElementById("modalDocTypeOther").focus();
+            return;
+        }
+        docType = customType;
+        document.getElementById("modalDocTypeOther").style.borderColor = "";
+    }
+
+    if (!title) {
+        document.getElementById("modalTitle").style.borderColor = "red";
+        document.getElementById("modalTitle").focus();
+        return;
+    }
+    document.getElementById("titleModal").classList.remove("visible");
+    var syncNote = document.getElementById("syncTitleNote");
+    if (syncNote) syncNote.parentNode.removeChild(syncNote);
+
+    // CASE A: Sync engine paused on a queued item that needs a title
+    if (pendingSyncScan) {
+        var scanItem = pendingSyncScan;
+        pendingSyncScan = null;
+        await _updateQueueItemTitle(scanItem.id, title, docType);
+        await _cacheTitle(scanItem.qr, title, docType);
+        scanLock = false;
+        syncPendingScans();
+        return;
+    }
+
+    // CASE B: Direct scan (online or offline) that needs a title
+    if (!pendingScan) { scanLock = false; return; }
+
+    var scan = pendingScan;
+    pendingScan = null;
+
+    await _cacheTitle(scan.qr, title, docType);
+
+    if (!isOnline) {
+        await _queueOfflineScan(scan.qr, scan.office, scan.actionType, scan.timestamp, title, docType, scan.destinations || "");
+        var offlineLabel = _offlineActionLabel(scan.actionType);
+        var statusDiv = document.getElementById("status");
+        statusDiv.innerHTML = "📤 QUEUED OFFLINE: " + scan.qr + " (" + offlineLabel + ")";
+        statusDiv.style.color = "#d97706";
+        addToDashboard(scan.qr, scan.office, "QUEUED-" + offlineLabel, title, false, scan.destinations || "");
+        updateQueueBadge(await countPending());
+        updateQueueDisplay();
+        setTimeout(function() { statusDiv.innerHTML = ""; }, 12000);
+        scanLock = false;
+    } else {
+        await _executeScan(scan.qr, scan.office, scan.actionType, scan.timestamp, title, docType, scan.destinations || "");
+    }
+}
+
+// Edit title modal (for supervisors / corrections)
+function showEditTitleModal(qr, currentTitle, currentType) {
+    document.getElementById("editModalQrDisplay").textContent = "QR: " + qr;
+    document.getElementById("editModalTitle").value   = currentTitle || "";
+    document.getElementById("editModalDocType").value = currentType  || "Letter";
+    document.getElementById("editTitleModal").classList.add("visible");
+    document.getElementById("_editQr").value = qr;
+    setTimeout(function() { document.getElementById("editModalTitle").focus(); }, 100);
+}
+function cancelEditModal() {
+    document.getElementById("editTitleModal").classList.remove("visible");
+}
+async function confirmEditModal() {
+    var title   = document.getElementById("editModalTitle").value.trim();
+    var docType = document.getElementById("editModalDocType").value;
+    var qr      = document.getElementById("_editQr").value;
+    if (docType === "Other") {
+        var customType = document.getElementById("editModalDocTypeOther").value.trim();
+        if (!customType) {
+            document.getElementById("editModalDocTypeOther").style.borderColor = "red";
+            document.getElementById("editModalDocTypeOther").focus();
+            return;
+        }
+        docType = customType;
+        document.getElementById("editModalDocTypeOther").style.borderColor = "";
+    }
+
+    if (!title) { document.getElementById("editModalTitle").style.borderColor = "red"; return; }
+    document.getElementById("editTitleModal").classList.remove("visible");
+
+    try {
+        var response = await fetch(WEBAPP_URL, {
+            method: "POST",
+            body: new URLSearchParams({ qr, office: document.getElementById("office").value,
+                actionType: "EDIT_TITLE", title, docType, key: API_KEY })
+        });
+        var data = await response.json();
+        if (data.action === "TITLE_UPDATED") {
+            document.getElementById("status").innerHTML = "✅ Title updated: " + data.title;
+            document.getElementById("status").style.color = "green";
+        } else {
+            document.getElementById("status").innerHTML = "❌ Update failed: " + (data.error || "unknown error");
+            document.getElementById("status").style.color = "red";
+        }
+    } catch(err) {
+        document.getElementById("status").innerHTML = "❌ Could not update title — check connection.";
+        document.getElementById("status").style.color = "red";
+    }
+    setTimeout(function() { document.getElementById("status").innerHTML = ""; }, 8000);
+}
+
+// Hidden field for edit modal QR (simple state passing)
+document.addEventListener("DOMContentLoaded", function() {
+    var h = document.createElement("input");
+    h.type = "hidden"; h.id = "_editQr";
+    document.body.appendChild(h);
+});
+
+// ============================================
+// SCANNER — THREE-BUTTON CARD LOGIC
+// ============================================
+let activeAction = "PROCESS";
+
+function activateCard(action) {
+    activeAction = action;
+    document.querySelectorAll('.scan-card').forEach(function(c) { c.classList.remove('active'); });
+    var cardId = action === 'PROCESS' ? 'cardIn' : action === 'TRANSFER' ? 'cardOut' : 'cardFinal';
+    document.getElementById(cardId).classList.add('active');
+    var inputId = action === 'PROCESS' ? 'qrInputIn' : action === 'TRANSFER' ? 'qrInputOut' : 'qrInputFinal';
+    setTimeout(function() { var el = document.getElementById(inputId); el.focus(); el.select(); }, 80);
+}
+
+function getActiveInput() {
+    if (activeAction === 'PROCESS')  return document.getElementById('qrInputIn');
+    if (activeAction === 'TRANSFER') return document.getElementById('qrInputOut');
+    return document.getElementById('qrInputFinal');
+}
+
+function activateScanner() { scannerActivated = true; }
+
+function autoSend(action) {
+    if (activeAction !== action) activateCard(action);
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(function() { sendData(action); }, 150);
+}
+
+async function sendData(action) {
+    var statusDiv = document.getElementById("status");
+    var inputEl   = getActiveInput();
+
+    if (!scannerActivated) {
+        statusDiv.innerHTML = "⚠️ Please click a scan card before scanning";
+        statusDiv.style.color = "red";
+        inputEl.value = "";
+        inputEl.focus();
+        return;
+    }
+    if (scanLock) return;
+    scanLock = true;
+
+    try {
+        var rawQr = inputEl.value.trim();
+        if (!rawQr) { return; }
+        if (rawQr.length > 100 || !/^[A-Za-z0-9\-_\/\.]+$/.test(rawQr)) {
+            statusDiv.innerHTML = "❌ Invalid QR code format — please scan again";
+            statusDiv.style.color = "red";
+            inputEl.value = "";
+            inputEl.focus();
+            return;
+        }
+
+        var qr         = rawQr;
+        var office     = document.getElementById("office").value;
+        var actionType = action || activeAction;
+        var timestamp  = new Date().toISOString();
+
+        inputEl.value = "";
+        inputEl.focus();
+
+        // SEND-TO-MANY check: if OUT + sendMany enabled, show dest modal
+        if ((actionType === "TRANSFER") && sendManyEnabled) {
+            await loadOfficeList();
+            pendingDestScan = { qr, office, actionType: "TRANSFER_MULTI", timestamp };
+            showDestModal(qr);
+            return; // scanLock stays true
+        }
+
+        // OFFLINE PATH
+        if (!isOnline) {
+            try {
+                var existingTitle = await _getCachedTitle(qr);
+                if (!existingTitle) {
+                    pendingScan = { qr, office, actionType, timestamp, destinations: "" };
+                    document.getElementById("modalQrDisplay").textContent = "QR: " + qr;
+                    document.getElementById("modalTitle").value   = "";
+                    document.getElementById("modalDocType").value = "Letter";
+                    document.getElementById("titleModal").classList.add("visible");
+                    setTimeout(function() { document.getElementById("modalTitle").focus(); }, 100);
+                    return;
+                }
+                await _queueOfflineScan(qr, office, actionType, timestamp, existingTitle.title, existingTitle.docType, "");
+                var offlineLabel = _offlineActionLabel(actionType);
+                statusDiv.innerHTML = "📤 QUEUED OFFLINE: " + qr + " (" + offlineLabel + ")";
+                statusDiv.style.color = "#d97706";
+                addToDashboard(qr, office, "QUEUED-" + offlineLabel, existingTitle.title || "");
+                updateQueueBadge(await countPending());
+                updateQueueDisplay();
+            } catch(err) {
+                statusDiv.innerHTML = "❌ CRITICAL — scan could NOT be saved offline. Note manually: <strong>" + qr + " / " + actionType + "</strong>";
+                statusDiv.style.color = "red";
+            }
+            setTimeout(function() { statusDiv.innerHTML = ""; }, 12000);
+            return;
+        }
+
+        // ONLINE PATH
+        await _executeScan(qr, office, actionType, timestamp, "", "", "");
+
+    } finally {
+        if (!pendingScan && !pendingDestScan) scanLock = false;
+    }
+}
+
+// Core fetch — shared by direct scan and title modal confirmation
+async function _executeScan(qr, office, actionType, timestamp, title, docType, destinations) {
+    var statusDiv = document.getElementById("status");
+    try {
+        var response = await fetch(WEBAPP_URL, {
+            method: "POST",
+            body: new URLSearchParams({ qr, office, actionType, timestamp, title, docType, destinations: destinations || "", key: API_KEY })
+        });
+        var data = await response.json();
+
+        if (data.action === "NEEDS_TITLE") {
+            showTitleModal(qr, office, actionType, timestamp, destinations);
+            return;
+        }
+
+        // Show result
+        var msg = "", color = "green";
+        if      (data.action === "IN")               { msg = "🟢 Document IN";                        color = "green";  }
+        else if (data.action === "IN(Offline)")      { msg = "🟢 Document IN (Offline)";              color = "green";  }
+        else if (data.action === "OUT")              { msg = "🔵 Document OUT";                        color = "blue";   }
+        else if (data.action === "OUT(Offline)")     { msg = "🔵 Document OUT (Offline)";             color = "blue";   }
+        else if (data.action === "IN(Final)" || data.action === "FINAL_LOCKED")
+                                                     { msg = "🟡 Document FINALIZED";                 color = "orange"; }
+        else if (data.action === "IN(Final,Offline)"){ msg = "🟡 Document FINALIZED (Offline)";       color = "orange"; }
+        else if (data.action === "DUPLICATE_IN")     { msg = "⚠️ Already IN at this office";          color = "orange"; }
+        else if (data.action === "TRANSFER_INVALID") { msg = "❌ Transfer invalid: " + (data.reason||""); color = "red"; }
+        else if (data.action === "CONFLICT_REJECTED"){ msg = "⚠️ Conflict: " + (data.reason||"document updated elsewhere"); color = "#b91c1c"; }
+        else if (data.error)                         { msg = "❌ Error: " + data.error;                color = "red";   }
+        else                                         { msg = "❌ Unexpected response";                 color = "red";   }
+
+        if (data.title && msg.indexOf("❌") === -1) {
+            msg += "<br><small style='color:#555;font-weight:400'>" + data.title + (data.docType ? " · " + data.docType : "") + "</small>";
+        }
+        if (data.destinations && msg.indexOf("❌") === -1) {
+            msg += "<br><small style='color:#1e40af;font-weight:600'>📨 Sent to: " + data.destinations + "</small>";
+        }
+
+        statusDiv.innerHTML = msg;
+        statusDiv.style.color = color;
+        addToDashboard(data.tracking || qr, data.office || office, data.action || "?", data.title || "", false, data.destinations || "");
+        setTimeout(function() { statusDiv.innerHTML = ""; }, 10000);
+
+    } catch(err) {
+        isOnline = false;
+        updateConnectionStatus("offline");
+        try {
+            await addToQueue({ qr, office, actionType, timestamp, title: title || "", docType: docType || "", destinations: destinations || "" });
+            var fallbackLabel = _offlineActionLabel(actionType);
+            statusDiv.innerHTML = "📤 CONNECTION LOST — Scan queued: " + qr + " (" + fallbackLabel + ")";
+            statusDiv.style.color = "#d97706";
+            addToDashboard(qr, office, "QUEUED-" + fallbackLabel, title || "", false, destinations || "");
+            updateQueueBadge(await countPending());
+            updateQueueDisplay();
+        } catch(queueErr) {
+            statusDiv.innerHTML = "❌ CRITICAL — connection lost AND scan could NOT be saved. Note manually: <strong>" + qr + "</strong>";
+            statusDiv.style.color = "red";
+        }
+        setTimeout(function() { statusDiv.innerHTML = ""; }, 10000);
+    } finally {
+        scanLock = false;
+    }
+}
+
+// ============================================
+// OFFLINE LABEL
+// ============================================
+function _offlineActionLabel(actionType) {
+    if (actionType === "PROCESS")        return "IN(Offline)";
+    if (actionType === "TRANSFER")       return "OUT(Offline)";
+    if (actionType === "TRANSFER_MULTI") return "OUT(Offline)";
+    if (actionType === "FINAL")          return "IN(Final,Offline)";
+    return actionType + "(Offline)";
+}
+
+// ============================================
+// DASHBOARD
+// ============================================
+function loadDashboard() {
+    if (!isOnline) return;
+    fetch(WEBAPP_URL + "?dashboard=1")
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var dashboard = document.getElementById("dashboard");
+            dashboard.innerHTML = "";
+            data.forEach(function(d) {
+                var icon = _actionIcon(d.action);
+                var row  = document.createElement("div");
+                row.className = "doc-row synced";
+
+                var destHtml = "";
+                if (d.destinations) {
+                    destHtml = '<div class="dest-badges">';
+                    d.destinations.split(",").forEach(function(name) {
+                        name = name.trim();
+                        if (name) destHtml += '<span class="dest-badge">→ ' + name + '</span>';
+                    });
+                    destHtml += '</div>';
+                }
+
+                row.innerHTML = "<strong>" + d.number + "</strong>"
+                    + (d.title ? " <span style='font-size:12px;color:#555'>— " + d.title + "</span>" : "")
+                    + "<br>" + icon + " " + d.action + " → " + d.office
+                    + (d.docType ? " <span style='font-size:11px;color:#888'>[" + d.docType + "]</span>" : "")
+                    + destHtml
+                    + "<br><small>" + d.time + "</small>";
+                dashboard.appendChild(row);
+            });
+        })
+        .catch(function() {});
+}
+
+function _actionIcon(action) {
+    if (!action) return "";
+    var a = action.toString();
+    if (a === "IN")               return "🟢";
+    if (a === "IN(Offline)")      return "🟢🔌";
+    if (a === "OUT")              return "🔵";
+    if (a === "OUT(Offline)")     return "🔵🔌";
+    if (a === "AUTO-OUT")         return "⚪";
+    if (a === "IN(Final)")        return "🟡";
+    if (a === "IN(Final,Offline)")return "🟡🔌";
+    if (a.indexOf("QUEUED") === 0)return "📤";
+    return "";
+}
+
+function addToDashboard(qr, office, status, title, isConflict, destinations) {
+    var dashboard = document.getElementById("dashboard");
+    var now       = new Date().toLocaleTimeString();
+    var isQueued  = String(status).indexOf("QUEUED") === 0;
+    var isOffline = String(status).indexOf("Offline") !== -1;
+    var icon      = isConflict ? "⚠️" : _actionIcon(status);
+
+    var cssClass = isConflict ? "doc-row conflict"
+                 : isQueued   ? "doc-row queued"
+                 : isOffline  ? "doc-row offline-synced"
+                 :              "doc-row synced";
+
+    var destHtml = "";
+    if (destinations) {
+        destHtml = '<div class="dest-badges">';
+        destinations.split(",").forEach(function(name) {
+            name = name.trim();
+            if (name) destHtml += '<span class="dest-badge">→ ' + name + '</span>';
+        });
+        destHtml += '</div>';
+    }
+
+    var row = document.createElement("div");
+    row.className = cssClass;
+    row.innerHTML = "<strong>" + qr + "</strong>"
+        + (title ? " <span style='font-size:12px;color:#555'>— " + title + "</span>" : "")
+        + "<br>" + icon + " " + status + " → " + office + "<br>"
+        + destHtml
+        + "<small>" + now
+        + (isQueued   ? " (pending sync)"              : "")
+        + (isConflict ? " (CONFLICT — verify manually)" : "")
+        + "</small>";
+
+    dashboard.prepend(row);
+    if (dashboard.children.length > 20) dashboard.removeChild(dashboard.lastChild);
+}
+
+// ============================================
+// CLOCK
+// ============================================
+function updateClock() {
+    var now = new Date();
+    document.getElementById("clock").innerHTML = now.toLocaleDateString() + "<br>" + now.toLocaleTimeString();
+}
+
+// ============================================
+// INIT
+// ============================================
+async function initApp() {
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    try {
+        await openDatabase();
+    } catch(err) {
+        document.getElementById("status").innerHTML = "⚠️ Offline storage unavailable. Scans will NOT be queued if connection drops.";
+        document.getElementById("status").style.color = "red";
+    }
+
+    isOnline = navigator.onLine;
+    updateConnectionStatus(isOnline ? "online" : "offline");
+
+    // Activate IN card by default
+    activateCard("PROCESS");
+
+    // Pre-load office list for Send-to-Many
+    if (isOnline) loadOfficeList();
+
+    loadDashboard();
+    setInterval(loadDashboard, 8000);
+    setInterval(function() { syncPendingScans(); }, SYNC_INTERVAL);
+
+    if (db) {
+        var pending = await countPending();
+        updateQueueBadge(pending);
+        updateQueueDisplay();
+        if (pending > 0 && isOnline) syncPendingScans();
+    }
+}
+
+initApp();
+</script>
+
+</body>
+</html>
