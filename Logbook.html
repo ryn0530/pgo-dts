@@ -11,7 +11,30 @@
 <title>PGO Internal Logbook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<script>
+// jsQR loader with fallback CDN
+(function loadJsQR() {
+  var sources = [
+    "https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js",
+    "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js",
+    "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+  ];
+  var idx = 0;
+  function tryLoad() {
+    if (idx >= sources.length) {
+      window._jsqrFailed = true;
+      console.error("All jsQR CDN sources failed");
+      return;
+    }
+    var s = document.createElement("script");
+    s.src = sources[idx];
+    s.onload  = function(){ window._jsqrLoaded = true; console.log("jsQR loaded from", sources[idx]); };
+    s.onerror = function(){ idx++; tryLoad(); };
+    document.head.appendChild(s);
+  }
+  tryLoad();
+})();
+</script>
 <style>
 :root {
   --navy:      #0f2544;
@@ -594,6 +617,10 @@ html, body {
       </div>
       <span class="result-uid" id="resultUid"></span>
     </div>
+
+    <div style="background:white;border-top:1px solid var(--border);padding:8px 16px;text-align:center;">
+      <button onclick="showManualEntry()" style="background:var(--bg);color:var(--navy);border:1.5px solid var(--border);padding:8px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">⌨️ Type QR manually</button>
+    </div>
   </div>
 
   <div class="panel" id="panelLog">
@@ -702,6 +729,20 @@ html, body {
     <button class="nav-btn" id="navSettings" onclick="showPanel('Settings')">
       <span class="nav-icon">👤</span>Profile
     </button>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="manualSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">⌨️ Manual QR Entry</div>
+    <div class="sheet-sub">Type the QR code text from the document.</div>
+    <label class="sheet-label">QR Code <span style="color:var(--red)">*</span></label>
+    <input type="text" class="sheet-input" id="manualQrInput" placeholder="e.g. PGO-2026-001" autocorrect="off" autocapitalize="characters" maxlength="100">
+    <div class="sheet-actions">
+      <button class="btn-secondary" onclick="closeSheet('manualSheet')">Cancel</button>
+      <button class="btn-primary" onclick="submitManualQr()">Continue</button>
+    </div>
   </div>
 </div>
 
@@ -987,13 +1028,28 @@ function startScanLoop() {
   var canvas = document.getElementById("camCanvas");
   var ctx    = canvas.getContext("2d", { willReadFrequently: true });
 
+  // Verify jsQR is actually loaded
+  if (typeof jsQR === "undefined") {
+    var hint = document.getElementById("scanHint");
+    if (window._jsqrFailed) {
+      hint.textContent = "⚠️ Scanner library failed to load — check internet";
+    } else {
+      hint.textContent = "⏳ Loading scanner library...";
+      // Retry in 1 second
+      setTimeout(startScanLoop, 1000);
+    }
+    return;
+  }
+
   function tick() {
     if (!scanLock && video.readyState === video.HAVE_ENOUGH_DATA) {
       canvas.width  = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       var img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+
+      // Try BOTH inversion modes — slower but catches more QR codes
+      var code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
 
       if (code && code.data) {
         var qr  = code.data.trim();
@@ -1557,6 +1613,32 @@ function escHtml(str) {
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;");
+}
+
+function showManualEntry() {
+  if (!currentUser) return;
+  document.getElementById("manualQrInput").value = "";
+  openSheet("manualSheet");
+  setTimeout(function(){ document.getElementById("manualQrInput").focus(); }, 300);
+}
+
+function submitManualQr() {
+  var qr = document.getElementById("manualQrInput").value.trim();
+  if (!qr) {
+    document.getElementById("manualQrInput").classList.add("error");
+    return;
+  }
+  if (!/^[A-Za-z0-9\-_\/\.]+$/.test(qr)) {
+    document.getElementById("manualQrInput").classList.add("error");
+    document.getElementById("manualQrInput").placeholder = "Invalid characters — use only letters, numbers, -_/.";
+    return;
+  }
+  document.getElementById("manualQrInput").classList.remove("error");
+  closeSheet("manualSheet");
+  // Reset cooldown so manual entry isn't blocked
+  lastQr = "";
+  lastScanTime = 0;
+  onQrDetected(qr);
 }
 
 async function init() {
