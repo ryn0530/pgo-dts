@@ -11,7 +11,25 @@
 <title>EDRMS Mobile Scanner</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="ifugaologo.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<script>
+(function loadJsQR() {
+  var srcs = [
+    "https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js",
+    "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js",
+    "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+  ];
+  var i = 0;
+  function tryNext() {
+    if (i >= srcs.length) { window._jsqrFailed = true; return; }
+    var s = document.createElement("script");
+    s.src = srcs[i];
+    s.onload  = function() { window._jsqrLoaded = true; };
+    s.onerror = function() { i++; tryNext(); };
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+</script>
 
 <style>
 /* ── Reset & Base ───────────────────────────────── */
@@ -480,11 +498,156 @@ html, body {
   text-align: center; font-size: 11px; color: #94a3b8;
   padding: 8px; margin-top: 8px;
 }
+
+/* ── Login Screen ───────────────────────────────── */
+.login-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--blue);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: calc(var(--safe-top) + 24px) 24px calc(var(--safe-bot) + 24px);
+}
+.login-screen.hidden { display: none; }
+.login-crest {
+  width: 76px; height: 76px; border-radius: 50%;
+  border: 2.5px solid rgba(201,162,39,0.6);
+  background: rgba(255,255,255,0.07);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin-bottom: 14px;
+}
+.login-title {
+  font-size: 18px; font-weight: 700; color: white;
+  text-align: center; letter-spacing: 0.3px;
+}
+.login-sub {
+  font-size: 11px; color: rgba(201,162,39,0.9);
+  letter-spacing: 2px; text-transform: uppercase;
+  text-align: center; margin-top: 3px; margin-bottom: 32px;
+}
+.login-card {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px; padding: 24px 20px;
+  width: 100%; max-width: 360px;
+}
+.login-label {
+  font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px; display: block;
+}
+.login-select, .login-input {
+  width: 100%; padding: 12px 14px; font-size: 15px;
+  background: rgba(255,255,255,0.09);
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 10px; color: white; outline: none;
+  margin-bottom: 16px; font-family: inherit;
+  -webkit-appearance: none; appearance: none;
+}
+.login-select option { background: #0b3d91; color: white; }
+.login-select:focus, .login-input:focus {
+  border-color: rgba(201,162,39,0.8);
+  background: rgba(255,255,255,0.13);
+}
+.login-input::placeholder { color: rgba(255,255,255,0.3); }
+.login-pin-wrap { position: relative; }
+.login-pin-dots {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -54%);
+  display: flex; gap: 10px; pointer-events: none;
+}
+.pin-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  transition: all 0.15s;
+}
+.pin-dot.filled { background: rgba(201,162,39,0.9); border-color: rgba(201,162,39,0.9); }
+#loginPinInput {
+  color: transparent; caret-color: transparent;
+  letter-spacing: 18px; text-align: center;
+}
+.login-btn {
+  width: 100%; padding: 13px; border: none;
+  border-radius: 10px; background: rgba(201,162,39,0.9);
+  color: #0b3d91; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit; margin-top: 4px;
+  transition: background 0.15s;
+}
+.login-btn:active { background: #f0c840; }
+.login-error {
+  font-size: 12px; color: #fca5a5; text-align: center;
+  margin-top: 10px; min-height: 18px;
+}
+.login-spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid rgba(11,61,145,0.3);
+  border-top-color: #0b3d91; border-radius: 50%;
+  animation: spin 0.7s linear infinite; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
-<div class="app">
+<!-- ══════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-crest">🏛️</div>
+  <div class="login-title">DTS Mobile Scanner</div>
+  <div class="login-sub">Province of Ifugao</div>
+
+  <div class="login-card">
+    <label class="login-label">Select Your Office</label>
+    <select class="login-select" id="loginOfficeSelect">
+      <option value="">— Choose office —</option>
+      <option value="PGO">Provincial Governors Office</option>
+      <option value="Admin">Provincial Administration Office</option>
+      <option value="Accounting">Provincial Accounting Office (PACCO)</option>
+      <option value="Budget">Provincial Budget Office</option>
+      <option value="Treasury">Provincial Treasury Office</option>
+      <option value="PGSO">Provincial General Services Office</option>
+      <option value="PLO">Provincial Legal Office</option>
+      <option value="PPDO">Provincial Planning and Development Office</option>
+      <option value="PAENRO">PAENRO</option>
+      <option value="PASSO">Provincial Assessor's Office</option>
+      <option value="PCEDO">Provincial Cooperative and Enterprise Dev. Office</option>
+      <option value="PDRRMO">Provincial Disaster Risk Reduction Office</option>
+      <option value="PGO-SPORTS">PGO - Sports</option>
+      <option value="PHO/PNO">PHO / PNO</option>
+      <option value="POST">Post Office</option>
+      <option value="Ptourism">Provincial Tourism Office</option>
+      <option value="PSWDO">Provincial Social Welfare and Dev. Office</option>
+      <option value="PVET">Provincial Veterinary Office</option>
+      <option value="SP">SP Secretary Office</option>
+      <option value="BAC">Bids and Awards Committee</option>
+      <option value="IAS">Internal Affairs Services</option>
+      <option value="IGH">Ifugao General Hospital</option>
+      <option value="PanopHospi">Panopdopan District Hospital</option>
+      <option value="Aguinaldo">Aguinaldo People's Hospital</option>
+      <option value="Hungduan">Hungduan Municipal Hospital</option>
+      <option value="Mayoyao">Mayoyao District Hospital</option>
+      <option value="Tinoc">Tinoc District Hospital</option>
+      <option value="AlfonsoLista">Potia District Hospital</option>
+    </select>
+
+    <label class="login-label">Office PIN</label>
+    <div class="login-pin-wrap">
+      <input type="password" class="login-input" id="loginPinInput"
+             inputmode="numeric" maxlength="8" placeholder="••••"
+             oninput="updateLoginDots()"
+             onkeydown="if(event.key==='Enter') doScannerLogin()">
+      <div class="login-pin-dots" id="loginPinDots"></div>
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="doScannerLogin()">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until logged in) -->
+<div class="app" id="mainApp" style="display:none;">
 
   <!-- OFFLINE BANNER -->
   <div class="offline-banner" id="offlineBanner">⚡ OFFLINE — scans are being saved locally</div>
@@ -495,49 +658,12 @@ html, body {
       <img src="ifugaologo.png" onerror="this.parentNode.textContent='📄'">
     </div>
     <div class="header-text">
-      <div class="header-title">EDRMS Mobile Scanner</div>
+      <div class="header-title">DTS Mobile Scanner</div>
       <div class="header-sub" id="headerSub">Province of Ifugao</div>
     </div>
-    <div class="header-status" id="headerStatus"></div>
-  </div>
-
-  <!-- OFFICE SELECTOR -->
-  <div class="office-bar">
-    <div class="office-select-wrap">
-      <span class="office-icon">🏢</span>
-      <select id="officeSelect" onchange="onOfficeChange()">
-        <option value="">— Select your office —</option>
-        <option value="PGO">Provincial Governors Office</option>
-        <option value="Admin">Provincial Administration Office</option>
-        <option value="Accounting">Provincial Accounting Office (PACCO)</option>
-        <option value="Budget">Provincial Budget Office</option>
-        <option value="Treasury">Provincial Treasury Office</option>
-        <option value="PGSO">Provincial General Services Office</option>
-        <option value="PLO">Provincial Legal Office</option>
-        <option value="PPDO">Provincial Planning and Development Office</option>
-        <option value="PAENRO">PAENRO</option>
-        <option value="PASSO">Provincial Assessor's Office</option>
-        <option value="PCEDO">Provincial Cooperative and Enterprise Development Office</option>
-        <option value="PDRRMO">Provincial Disaster and Risk Reduction Office</option>
-        <option value="PGO-SPORTS">Provincial Governors Office - Sports</option>
-        <option value="PHOPNO">Provincial Health / Nutrition Office</option>
-        <option value="PHO/PNO">PHO/PNO</option>
-        <option value="POST">Post Office</option>
-        <option value="Ptourism">Provincial Tourism Office</option>
-        <option value="PSWDO">Provincial Social Welfare and Development Office</option>
-        <option value="PVET">Provincial Veterinary Office</option>
-        <option value="SP">SP Secretary Office</option>
-        <option value="BAC">Bids and Awards Committee</option>
-        <option value="IAS">Internal Affairs Services</option>
-        <option value="IGH">Ifugao General Hospital</option>
-        <option value="PanopHospi">Panopdopan District Hospital</option>
-        <option value="Aguinaldo">Aguinaldo People's Hospital</option>
-        <option value="Hungduan">Hungduan Municipal Hospital</option>
-        <option value="Mayoyao">Mayoyao District Hospital</option>
-        <option value="Tinoc">Tinoc District Hospital</option>
-        <option value="AlfonsoLista">Potia District Hospital</option>
-      </select>
-      <span class="office-chevron">▼</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button onclick="doScannerLogout()" style="background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.7);padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">Sign Out</button>
+      <div class="header-status" id="headerStatus"></div>
     </div>
   </div>
 
@@ -717,6 +843,7 @@ html, body {
     </div>
   </div>
 </div>
+</div><!-- end #mainApp -->
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -729,6 +856,47 @@ const DB_VERSION    = 1;
 const QUEUE_STORE   = "pendingScans";
 const TITLE_STORE   = "knownTitles";
 const SYNC_INTERVAL = 6000;
+
+// ═══════════════════════════════════════════════════════
+// OFFICE PIN MAP — change these PINs before deploying!
+// Each office has its own PIN. Staff must enter the
+// correct PIN for their office to use the scanner.
+// ═══════════════════════════════════════════════════════
+const OFFICE_PINS = {
+  "PGO":         "1001",
+  "Admin":       "1002",
+  "Accounting":  "1003",
+  "Budget":      "1004",
+  "Treasury":    "1005",
+  "PGSO":        "1006",
+  "PLO":         "1007",
+  "PPDO":        "1008",
+  "PAENRO":      "1009",
+  "PASSO":       "1010",
+  "PCEDO":       "1011",
+  "PDRRMO":      "1012",
+  "PGO-SPORTS":  "1013",
+  "PHO/PNO":     "1014",
+  "POST":        "1015",
+  "Ptourism":    "1016",
+  "PSWDO":       "1017",
+  "PVET":        "1018",
+  "SP":          "1019",
+  "BAC":         "1020",
+  "IAS":         "1021",
+  "IGH":         "1022",
+  "PanopHospi":  "1023",
+  "Aguinaldo":   "1024",
+  "Hungduan":    "1025",
+  "Mayoyao":     "1026",
+  "Tinoc":       "1027",
+  "AlfonsoLista":"1028"
+};
+
+// ═══════════════════════════════════════════════════════
+// LOGIN STATE (session only — cleared on page close)
+// ═══════════════════════════════════════════════════════
+var loggedInOffice = null;  // set after successful login
 
 // ═══════════════════════════════════════════════════════
 // STATE
@@ -850,40 +1018,90 @@ function dbUpdate(store, id, updates) {
 // ═══════════════════════════════════════════════════════
 // OFFICE MANAGEMENT
 // ═══════════════════════════════════════════════════════
-function onOfficeChange() {
-  var val  = document.getElementById("officeSelect").value;
-  var text = document.getElementById("officeSelect").selectedOptions[0].text;
-  document.getElementById("headerSub").textContent = val ? text : "Province of Ifugao";
-  document.getElementById("settingsOfficeName").textContent = val ? text : "Not selected";
-  localStorage.setItem("edrms_office", val);
-  if (isOnline && val) loadOfficeList();
-}
+function onOfficeChange() { /* no-op — office set at login */ }
 
-function restoreOffice() {
-  var saved = localStorage.getItem("edrms_office");
-  if (saved) {
-    document.getElementById("officeSelect").value = saved;
-    onOfficeChange();
+function restoreOffice() { /* no-op — office set at login */ }
+
+function getOffice() { return loggedInOffice || ""; }
+
+// ═══════════════════════════════════════════════════════
+// LOGIN / LOGOUT
+// ═══════════════════════════════════════════════════════
+function updateLoginDots() {
+  var len  = document.getElementById("loginPinInput").value.length;
+  var html = "";
+  for (var i = 0; i < Math.min(len, 8); i++) {
+    html += '<div class="pin-dot filled"></div>';
   }
+  document.getElementById("loginPinDots").innerHTML = html;
 }
 
-function getOffice() {
-  return document.getElementById("officeSelect").value;
+function doScannerLogin() {
+  var officeVal = document.getElementById("loginOfficeSelect").value;
+  var pin       = document.getElementById("loginPinInput").value.trim();
+  var errEl     = document.getElementById("loginError");
+  errEl.textContent = "";
+
+  if (!officeVal) { errEl.textContent = "Please select your office."; return; }
+  if (!pin)       { errEl.textContent = "Please enter your office PIN."; return; }
+
+  var correctPin = OFFICE_PINS[officeVal];
+  if (!correctPin || pin !== correctPin) {
+    errEl.textContent = "Incorrect PIN for this office. Please try again.";
+    document.getElementById("loginPinInput").value = "";
+    updateLoginDots();
+    return;
+  }
+
+  // Success — set session office
+  loggedInOffice = officeVal;
+  var officeName = document.getElementById("loginOfficeSelect").selectedOptions[0].text;
+  document.getElementById("headerSub").textContent = officeName;
+
+  // Show app, hide login
+  document.getElementById("loginScreen").classList.add("hidden");
+  var app = document.getElementById("mainApp");
+  app.style.display        = "flex";
+  app.style.flexDirection  = "column";
+  app.style.height         = "100dvh";
+
+  // Boot the app
+  init();
+}
+
+function doScannerLogout() {
+  loggedInOffice = null;
+  stopCamera();
+  document.getElementById("loginScreen").classList.remove("hidden");
+  document.getElementById("mainApp").style.display = "none";
+  document.getElementById("loginPinInput").value   = "";
+  document.getElementById("loginOfficeSelect").value = "";
+  document.getElementById("loginError").textContent  = "";
+  updateLoginDots();
 }
 
 // ═══════════════════════════════════════════════════════
-// CAMERA
+// CAMERA — high-res, autofocus, tap-to-focus
 // ═══════════════════════════════════════════════════════
 async function startCamera() {
   var cameraOff = document.getElementById("cameraOff");
   cameraOff.style.display = "none";
 
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    cameraOff.style.display = "flex";
+    return;
+  }
+
+  // Check jsQR loaded
+  if (typeof jsQR === "undefined") {
+    setTimeout(startCamera, 800);
+    return;
+  }
+
   try {
-    // Enumerate cameras first
     var devices = await navigator.mediaDevices.enumerateDevices();
     cameras = devices.filter(function(d) { return d.kind === "videoinput"; });
 
-    // Populate camera selector
     var sel = document.getElementById("cameraSelect");
     sel.innerHTML = "";
     cameras.forEach(function(cam, i) {
@@ -893,15 +1111,12 @@ async function startCamera() {
       sel.appendChild(opt);
     });
 
-    // Prefer back camera
-    var backCam = cameras.find(function(c) {
-      return /back|rear|environment/i.test(c.label);
-    });
+    var backCam = cameras.find(function(c) { return /back|rear|environment/i.test(c.label); });
     currentCamId = backCam ? backCam.deviceId : (cameras[0] ? cameras[0].deviceId : null);
     if (currentCamId) sel.value = currentCamId;
 
     await openVideoStream(currentCamId);
-    document.getElementById("camStatusText").textContent = "Active — " + (cameras.length) + " camera(s) found";
+    document.getElementById("camStatusText").textContent = "Active — tap screen to refocus";
 
   } catch(err) {
     cameraOff.style.display = "flex";
@@ -912,15 +1127,59 @@ async function startCamera() {
 
 async function openVideoStream(deviceId) {
   if (videoStream) { videoStream.getTracks().forEach(function(t) { t.stop(); }); }
+
+  // Request high-res with continuous autofocus
   var constraints = {
-    video: deviceId
-      ? { deviceId: { exact: deviceId }, facingMode: "environment" }
-      : { facingMode: "environment" },
+    video: {
+      facingMode: { ideal: "environment" },
+      width:  { ideal: 1920, min: 1280 },
+      height: { ideal: 1080, min: 720 },
+      focusMode: { ideal: "continuous" }
+    },
     audio: false
   };
+  if (deviceId) constraints.video.deviceId = { exact: deviceId };
+
   videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+  // Apply continuous autofocus after stream acquired
+  var track = videoStream.getVideoTracks()[0];
+  if (track && track.applyConstraints) {
+    try {
+      var caps = track.getCapabilities ? track.getCapabilities() : {};
+      var adv  = [];
+      if (caps.focusMode && caps.focusMode.indexOf("continuous") !== -1) {
+        adv.push({ focusMode: "continuous" });
+      }
+      if (caps.zoom) {
+        adv.push({ zoom: Math.min(1.5, caps.zoom.max || 1) });
+      }
+      if (adv.length > 0) await track.applyConstraints({ advanced: adv });
+    } catch(e) { /* silent — not all phones support this */ }
+  }
+
   var video = document.getElementById("cameraVideo");
   video.srcObject = videoStream;
+
+  // Tap to refocus
+  video.onclick = async function() {
+    if (!videoStream) return;
+    var t = videoStream.getVideoTracks()[0];
+    if (!t || !t.applyConstraints) return;
+    try {
+      var caps = t.getCapabilities ? t.getCapabilities() : {};
+      if (caps.focusMode && caps.focusMode.indexOf("single-shot") !== -1) {
+        await t.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
+        setTimeout(function() {
+          if (caps.focusMode.indexOf("continuous") !== -1) {
+            t.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(function(){});
+          }
+        }, 600);
+      }
+      flashScreen();
+    } catch(e) { /* silent */ }
+  };
+
   await video.play();
   startScanLoop();
 }
@@ -931,7 +1190,7 @@ async function switchCamera() {
 }
 
 // ═══════════════════════════════════════════════════════
-// QR SCAN LOOP
+// QR SCAN LOOP — center crop + attemptBoth for reliability
 // ═══════════════════════════════════════════════════════
 function startScanLoop() {
   if (scanLoopId) cancelAnimationFrame(scanLoopId);
@@ -942,20 +1201,30 @@ function startScanLoop() {
 
   function tick() {
     if (video.readyState === video.HAVE_ENOUGH_DATA && !scanLock) {
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var vw = video.videoWidth;
+      var vh = video.videoHeight;
+      canvas.width  = vw;
+      canvas.height = vh;
+      ctx.drawImage(video, 0, 0, vw, vh);
 
-      var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var code    = jsQR(imgData.data, imgData.width, imgData.height, {
-        inversionAttempts: "dontInvert"
+      // Crop to center 70% — matches the on-screen scan box,
+      // smaller area = faster + more accurate detection
+      var cropSize = Math.floor(Math.min(vw, vh) * 0.7);
+      var cropX    = Math.floor((vw - cropSize) / 2);
+      var cropY    = Math.floor((vh - cropSize) / 2);
+      var imgData  = ctx.getImageData(cropX, cropY, cropSize, cropSize);
+
+      // attemptBoth catches light-on-dark AND dark-on-light QR codes
+      var code = jsQR(imgData.data, imgData.width, imgData.height, {
+        inversionAttempts: "attemptBoth"
       });
 
       if (code && code.data) {
         var now = Date.now();
-        var qr  = code.data.trim();
-        // Cooldown — don't re-fire same QR within SCAN_COOLDOWN ms
-        if (qr !== lastScannedQr || (now - lastScanTime) > SCAN_COOLDOWN) {
+        var qr  = code.data == null ? "" : String(code.data).trim();
+        if (!qr || qr.length === 0 || qr.length > 100) { /* invalid — ignore */ }
+        else if (!/^[A-Za-z0-9\-_\/\.]+$/.test(qr)) { /* bad chars — ignore */ }
+        else if (qr !== lastScannedQr || (now - lastScanTime) > SCAN_COOLDOWN) {
           lastScannedQr = qr;
           lastScanTime  = now;
           onQrDetected(qr);
@@ -1509,7 +1778,12 @@ async function init() {
   if (isOnline) loadOfficeList();
 }
 
-init();
+function stopCamera() {
+  if (scanLoopId) { cancelAnimationFrame(scanLoopId); scanLoopId = null; }
+  if (videoStream) { videoStream.getTracks().forEach(function(t){ t.stop(); }); videoStream = null; }
+}
+
+// Page loads showing login screen — init() called only after successful login
 </script>
 </body>
 </html>
