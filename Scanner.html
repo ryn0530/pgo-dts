@@ -1121,7 +1121,7 @@ async function openCamera() {
     cameraRunning = true;
     document.getElementById("camToggleBtn").textContent = "⏹ Stop Camera";
     document.getElementById("scanTriggerBtn").style.display = "flex";
-    document.getElementById("scanHintText").textContent = "Tap 📷 to scan · Tap screen to refocus";
+    document.getElementById("scanHintText").textContent = "Tap 📷 to scan (keeps scanning until QR found)";
     document.getElementById("scanLaserEl").style.animationPlayState = "running";
     document.getElementById("camStatusText").textContent = "Active — tap screen to refocus";
 
@@ -1216,44 +1216,65 @@ var singleScanMode = false;
 
 function triggerScan() {
   if (!cameraRunning) return;
-  if (scanLoopId) { cancelAnimationFrame(scanLoopId); scanLoopId = null; }
+
+  // Toggle: if already scanning → stop
+  if (singleScanMode) {
+    stopScanTrigger();
+    return;
+  }
+
+  if (typeof jsQR === "undefined") {
+    document.getElementById("scanHintText").textContent = "⏳ Scanner library still loading...";
+    return;
+  }
+
   singleScanMode = true;
   var btn = document.getElementById("scanTriggerBtn");
   btn.classList.add("scanning");
-  btn.textContent = "⏳";
-  document.getElementById("scanHintText").textContent = "Scanning... Hold steady";
+  btn.textContent = "⏹";
+  document.getElementById("scanHintText").textContent = "🔍 Scanning... Point at QR code";
 
-  // Run scan loop until QR found or timeout
-  var started = Date.now();
   var video  = document.getElementById("cameraVideo");
   var canvas = document.getElementById("scanCanvas");
   var ctx    = canvas.getContext("2d", { willReadFrequently: true });
+  var attempts = 0;
 
   function tick() {
-    if (!singleScanMode) { stopScanTrigger(); return; }
-    if (Date.now() - started > 8000) {
-      stopScanTrigger();
-      document.getElementById("scanHintText").textContent = "No QR found — try again · Tap screen to refocus";
+    if (!singleScanMode) return; // stopped externally
+
+    // Wait for video to have real dimensions
+    var vw = video.videoWidth;
+    var vh = video.videoHeight;
+    if (!vw || !vh || vw < 10 || vh < 10) {
+      attempts++;
+      if (attempts > 300) { // ~5 seconds with no video — give up
+        stopScanTrigger();
+        document.getElementById("scanHintText").textContent = "Camera not ready — try stopping and starting again";
+        return;
+      }
+      scanLoopId = requestAnimationFrame(tick);
       return;
     }
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      var vw = video.videoWidth, vh = video.videoHeight;
-      canvas.width = vw; canvas.height = vh;
-      ctx.drawImage(video, 0, 0, vw, vh);
-      var cropSize = Math.floor(Math.min(vw, vh) * 0.7);
-      var cropX = Math.floor((vw - cropSize) / 2);
-      var cropY = Math.floor((vh - cropSize) / 2);
-      var imgData = ctx.getImageData(cropX, cropY, cropSize, cropSize);
-      var code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
-      if (code && code.data) {
-        var qr = String(code.data).trim();
-        if (qr && qr.length > 0 && qr.length <= 100 && /^[A-Za-z0-9\-_\/\.]+$/.test(qr)) {
-          stopScanTrigger();
-          onQrDetected(qr);
-          return;
-        }
+
+    // Draw full frame — no cropping, maximises chance of finding QR
+    canvas.width  = vw;
+    canvas.height = vh;
+    ctx.drawImage(video, 0, 0, vw, vh);
+    var imgData = ctx.getImageData(0, 0, vw, vh);
+
+    // Try both light-on-dark and dark-on-light QR codes
+    var code = jsQR(imgData.data, vw, vh, { inversionAttempts: "attemptBoth" });
+
+    if (code && code.data) {
+      var qr = String(code.data).trim();
+      // Relaxed validation — only reject truly empty or absurdly long codes
+      if (qr.length > 0 && qr.length <= 150) {
+        stopScanTrigger();
+        onQrDetected(qr);
+        return;
       }
     }
+
     scanLoopId = requestAnimationFrame(tick);
   }
   scanLoopId = requestAnimationFrame(tick);
@@ -1274,8 +1295,11 @@ function stopScanTrigger() {
 // QR DETECTED
 // ═══════════════════════════════════════════════
 async function onQrDetected(qr) {
-  if (!qr || qr.length === 0 || qr.length > 100) return;
-  if (!/^[A-Za-z0-9\-_\/\.]+$/.test(qr)) return;
+  // Relaxed validation — only reject truly empty or absurdly long
+  if (!qr || qr.length === 0 || qr.length > 150) return;
+  // Strip leading/trailing whitespace that cameras sometimes add
+  qr = qr.trim();
+  if (!qr) return;
   if (scanLock) return;
 
   var office = getOffice();
